@@ -243,20 +243,150 @@ document.querySelectorAll('.tab').forEach((tab) => {
 });
 
 // =========================================================
-// LAGET
+// LAG
 // =========================================================
+//
+// Appen kan ha flere lag. Alt annet (spillere, kamper, statistikk)
+// gjelder laget som er valgt, se team().
+
+function teamName(t) {
+  return (t || team()).name || 'Mitt lag';
+}
+
+function sortedTeams() {
+  return [...data.teams].sort((a, b) => teamName(a).localeCompare(teamName(b), 'nb'));
+}
 
 function renderTeam() {
-  $('topbar-team').textContent = team().name || 'Mitt lag';
+  $('topbar-team').textContent = teamName();
+  $('team-heading').textContent = teamName();
   $('input-team-name').value = team().name;
   $('input-team-half').value = team().halfLength;
+  $('btn-delete-team').hidden = data.teams.length < 2;
+}
+
+// Listen over alle lag øverst på «Lag»-siden
+function renderTeamList() {
+  const list = $('team-list');
+  list.replaceChildren();
+  sortedTeams().forEach((t) => {
+    const active = t.id === team().id;
+    const row = el('button', 'match-row team-row' + (active ? ' active' : ''));
+    row.type = 'button';
+    const meta = el('span', 'match-date', `${t.players.length} spillere · ${t.matches.length} kamper`);
+    if (active) meta.append(el('span', 'status status-done', 'Valgt'));
+    row.append(meta, el('span', 'match-score', active ? '✓' : '›'), el('span', 'match-title', teamName(t)));
+    row.addEventListener('click', () => selectTeam(t.id));
+    const item = el('li');
+    item.append(row);
+    list.append(item);
+  });
+}
+
+function selectTeam(id) {
+  if (id === team().id) return;
+  data.activeTeamId = id;
+  saveData();
+  statsMatchId = 'all';
+  currentMatchId = null;
+  renderAll();
+  showToast(`Viser ${teamName()}`);
 }
 
 $('input-team-name').addEventListener('input', (event) => {
   team().name = event.target.value.trim();
-  $('topbar-team').textContent = team().name || 'Mitt lag';
+  $('topbar-team').textContent = teamName();
+  $('team-heading').textContent = teamName();
   saveData();
   renderMatchList();
+  renderTeamList();
+});
+
+// ---------- Nytt lag ----------
+
+$('btn-new-team').addEventListener('click', () => {
+  $('team-form').reset();
+  $('input-new-team-half').value = team().halfLength;
+  const copyFrom = $('input-copy-from');
+  copyFrom.replaceChildren(new Option('Ingen – start med tom spillerliste', ''));
+  sortedTeams().forEach((t) => {
+    if (t.players.length) copyFrom.append(new Option(`${teamName(t)} (${t.players.length} spillere)`, t.id));
+  });
+  $('team-error').hidden = true;
+  $('team-dialog').showModal();
+  $('input-new-team').focus();
+});
+
+$('btn-cancel-team').addEventListener('click', () => $('team-dialog').close());
+
+$('team-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const name = $('input-new-team').value.trim();
+  if (!name) {
+    $('team-error').textContent = 'Skriv inn et lagnavn.';
+    $('team-error').hidden = false;
+    return;
+  }
+  if (data.teams.some((t) => teamName(t).toLowerCase() === name.toLowerCase())) {
+    $('team-error').textContent = `Det finnes allerede et lag som heter ${name}.`;
+    $('team-error').hidden = false;
+    return;
+  }
+
+  const newT = newTeam(name);
+  newT.halfLength = clampHalf($('input-new-team-half').value);
+  // Kopierte spillere får nye id-er, så lagene er helt uavhengige.
+  const source = data.teams.find((t) => t.id === $('input-copy-from').value);
+  if (source) newT.players = source.players.map((p) => ({ ...p, id: newId() }));
+
+  data.teams.push(newT);
+  $('team-dialog').close();
+  selectTeam(newT.id);
+  showToast(`${name} er laget` + (source ? ` med ${newT.players.length} spillere` : ''));
+});
+
+// ---------- Slett lag ----------
+
+$('btn-delete-team').addEventListener('click', async () => {
+  if (data.teams.length < 2) return;
+  const t = team();
+  const ok = await ask({
+    title: `Slette ${teamName(t)}?`,
+    message: `Laget, ${t.players.length} spillere og ${t.matches.length} kamper med all statistikk slettes for godt. Ta gjerne en sikkerhetskopi først.`,
+    okText: 'Slett laget', danger: true
+  });
+  if (!ok) return;
+  data.teams = data.teams.filter((x) => x.id !== t.id);
+  data.activeTeamId = sortedTeams()[0].id;
+  saveData();
+  statsMatchId = 'all';
+  renderAll();
+  showToast(`${teamName(t)} er slettet`);
+});
+
+// ---------- Bytt lag fra toppfeltet ----------
+
+$('btn-team-switch').addEventListener('click', () => {
+  const list = $('team-switch-list');
+  list.replaceChildren();
+  sortedTeams().forEach((t) => {
+    const active = t.id === team().id;
+    const button = el('button', 'btn btn-secondary' + (active ? ' active' : ''));
+    button.type = 'button';
+    button.append(el('span', '', teamName(t)), el('span', 'switch-meta', active ? '✓ valgt' : `${t.matches.length} kamper`));
+    button.addEventListener('click', () => {
+      $('team-switch-dialog').close();
+      selectTeam(t.id);
+    });
+    list.append(button);
+  });
+  $('team-switch-dialog').showModal();
+});
+
+$('btn-close-switch').addEventListener('click', () => $('team-switch-dialog').close());
+$('btn-manage-teams').addEventListener('click', () => {
+  $('team-switch-dialog').close();
+  showView('team');
 });
 
 $('input-team-half').addEventListener('change', (event) => {
@@ -711,7 +841,7 @@ function renderPlayerColumn(match) {
   if (draft.side === 'us') {
     const outfield = players.filter((p) => p.role !== 'keeper');
     if (!players.length) {
-      column.append(el('p', 'reg-note', 'Legg til spillere under «Laget».'));
+      column.append(el('p', 'reg-note', 'Legg til spillere under «Lag».'));
     }
     [...outfield, ...keepers].forEach((p, i) => {
       if (i === outfield.length) column.append(el('p', 'reg-label', 'Keeper'));
@@ -1661,8 +1791,10 @@ svgEl('g', { id: 'stats-court-layer' }, $('stats-court'));
 
 function renderAll() {
   renderTeam();
+  renderTeamList();
   renderPlayers();
   renderMatchList();
+  if (!$('view-stats').hidden) renderStats();
 }
 
 renderAll();

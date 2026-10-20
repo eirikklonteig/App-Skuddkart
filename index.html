@@ -14,7 +14,10 @@
     <img src="icon.svg" alt="" class="logo">
     <div>
       <h1>Skuddkart</h1>
-      <p class="team-name" id="topbar-team">Tune IL</p>
+      <!-- Trykk på lagnavnet for å bytte lag -->
+      <button class="team-switch" id="btn-team-switch" aria-label="Bytt lag">
+        <span id="topbar-team">Tune IL</span> <span aria-hidden="true">▾</span>
+      </button>
     </div>
   </header>
 
@@ -22,7 +25,7 @@
   <nav class="tabbar">
     <button class="tab active" data-view="team">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3.2-.4 5.5 1.7 5.5 4.8"/></svg>
-      Laget
+      Lag
     </button>
     <button class="tab" data-view="matches">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V6h18v14"/><path d="M3 10h18M9 6v14M15 6v14"/></svg>
@@ -39,10 +42,19 @@
   </nav>
 
   <main>
-    <!-- VISNING: Laget -->
+    <!-- VISNING: Lag og spillere -->
     <section class="view" id="view-team">
       <div class="view-head">
-        <h2>Laget</h2>
+        <h2>Lag</h2>
+        <button class="btn btn-secondary" id="btn-new-team">+ Nytt lag</button>
+      </div>
+
+      <!-- Alle lagene. Trykk på et lag for å velge det. -->
+      <ul class="card-list team-list" id="team-list"></ul>
+
+      <!-- Det valgte laget: innstillinger og spillere -->
+      <div class="view-head team-section-head">
+        <h2 id="team-heading">Tune IL</h2>
         <button class="btn btn-primary" id="btn-add-player">+ Ny spiller</button>
       </div>
 
@@ -68,6 +80,8 @@
         <h3 class="list-title">Utespillere <span class="count" id="count-players"></span></h3>
         <ul class="player-list" id="list-players"></ul>
       </div>
+
+      <button class="btn btn-ghost-danger delete-team" id="btn-delete-team">Slett dette laget</button>
     </section>
 
     <!-- VISNING: Kampliste -->
@@ -271,7 +285,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.7</p>
+      <p class="muted small">Skuddkart versjon 0.8</p>
     </section>
   </main>
 
@@ -346,6 +360,49 @@
         <button type="submit" class="btn btn-primary">Start kamp</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Skjema for nytt lag -->
+  <dialog id="team-dialog">
+    <form id="team-form">
+      <h3>Nytt lag</h3>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Lagnavn</span>
+          <input type="text" id="input-new-team" maxlength="40" required autocomplete="off"
+                 placeholder="F.eks. Tune J14">
+        </label>
+        <label class="field field-narrow">
+          <span>Omgang (min)</span>
+          <input type="number" id="input-new-team-half" min="5" max="30" inputmode="numeric" required>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Kopier spillere fra</span>
+        <select id="input-copy-from"></select>
+      </label>
+
+      <p class="form-error" id="team-error" hidden></p>
+
+      <div class="btn-row end">
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-team">Avbryt</button>
+        <button type="submit" class="btn btn-primary">Lag laget</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Bytt lag (fra toppfeltet) -->
+  <dialog id="team-switch-dialog">
+    <h3>Velg lag</h3>
+    <div class="menu-list" id="team-switch-list"></div>
+    <div class="btn-row end">
+      <button type="button" class="btn btn-secondary" id="btn-manage-teams">Administrer lag</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary" id="btn-close-switch">Lukk</button>
+    </div>
   </dialog>
 
   <!-- Kampmeny -->

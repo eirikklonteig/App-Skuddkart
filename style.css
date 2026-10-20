@@ -286,6 +286,37 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
 .status-live { background: #fdf0d2; color: #7a5300; }
 .status-done { background: var(--border); color: var(--text); }
 
+/* ---------- Flere lag ---------- */
+.team-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: .85rem;
+  color: #fff;
+  opacity: .95;
+  cursor: pointer;
+}
+.team-switch:hover { text-decoration: underline; }
+
+.team-list .match-row { grid-template-columns: 1fr auto; }
+.team-row.active { box-shadow: inset 0 0 0 2px var(--green), var(--shadow); }
+.team-row .match-title { font-size: 1.05rem; }
+.team-section-head {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.delete-team { margin-top: 24px; }
+
+#team-switch-list .btn { justify-content: space-between; }
+.switch-meta { font-weight: 400; font-size: .85rem; color: var(--muted); }
+#team-switch-list .btn.active { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
+
 /* =========================================================
    KAMPVISNING – laget for å få plass på én mobilskjerm
    ========================================================= */

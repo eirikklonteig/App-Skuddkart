@@ -19,12 +19,16 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
       Bør være på plass før ekte seriekamper føres (gir statistikk i over-/undertall
       og før/etter time-out).
 
+- [x] Steg 6: Flere lag – lagliste, nytt lag (med kopiering av spillere), bytte lag
+      fra toppfeltet, slette lag. Spillere, kamper og statistikk følger valgt lag.
+
 ## Senere
 - **Før og etter time-out:** effektivitet i minuttene før og etter hver time-out
 - **Blått kort** (rapport etter rødt kort), hvis det trengs
 - **Varmekart over banen:** se hvor skuddene kommer fra, og hvordan det endrer seg med hvem som er på banen
 - **Type angrep:** kontring, gjennombrudd, vanlig angrep (valgfritt ekstra trykk)
-- **Flere lag i samme klubb:** velge/bytte lag i appen (lagringen er allerede klar for dette)
+- **Felles spillere på tvers av lag:** én spillerliste for klubben, så statistikk for en
+  spiller som spiller på flere lag kan samles (i dag legges spilleren inn på hvert lag)
 - **Innlogging og roller:** admin, trener og lagleder, med felles lagring på nett
 - **Kobling til klubbens SharePoint**
 - **Dele statistikk:** lage PDF som kan sendes til laget
