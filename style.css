@@ -374,9 +374,10 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   margin-top: 8px;
   align-items: start;
 }
+/* Mobil: spillerne i én kolonne, så mål og bane får mest mulig bredde */
 .reg-players {
   display: grid;
-  grid-template-columns: repeat(2, 50px);
+  grid-template-columns: 54px;
   gap: 4px;
   align-content: start;
 }
@@ -454,6 +455,14 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
     repeating-linear-gradient(-45deg, transparent 0 7px, rgba(0,0,0,.05) 7px 8px),
     var(--surface);
 }
+/* Mobil: det er plass nedover, så målet gjøres høyere og bredere */
+@media (max-width: 599px) {
+  .reg .goal { width: 86%; aspect-ratio: 3 / 1.8; }
+  .pbtn { height: 42px; }
+  .reg-field .last-shot { padding-left: 2px; }
+  .reg-field .last-text { font-size: .78rem; }
+}
+
 .zone {
   border: 1px dashed var(--border);
   background: transparent;
