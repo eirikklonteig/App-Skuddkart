@@ -232,6 +232,7 @@ function showView(name) {
     tab.classList.toggle('active', tab.dataset.view === activeTab);
   });
   document.body.classList.toggle('in-match', name === 'match');
+  if (name === 'stats') renderStats();
   window.scrollTo(0, 0);
 }
 
@@ -400,8 +401,12 @@ function renderMatchList() {
     const score = matchScore(match);
     const row = el('button', 'match-row');
     row.type = 'button';
+    const date = el('span', 'match-date', formatDate(match.date) + (match.home ? ' · Hjemme' : ' · Borte'));
+    date.append(match.finished
+      ? el('span', 'status status-done', 'Ferdig')
+      : el('span', 'status status-live', 'Pågår'));
     row.append(
-      el('span', 'match-date', formatDate(match.date) + (match.home ? ' · Hjemme' : ' · Borte')),
+      date,
       el('span', 'match-score', match.home ? `${score.us} – ${score.them}` : `${score.them} – ${score.us}`),
       el('span', 'match-title', matchTitle(match))
     );
@@ -490,6 +495,16 @@ function renderMatch() {
   renderShotPanel(match);
   renderLastShot(match);
   renderTimeline(match);
+
+  // En avsluttet kamp er låst for nye skudd, men tidslinjen kan rettes.
+  const finished = !!match.finished;
+  $('reg-card').hidden = finished;
+  $('finished-card').hidden = !finished;
+  $('btn-clock').disabled = finished;
+  if (finished) {
+    const score = matchScore(match);
+    $('finished-score').textContent = `${team().name || 'Vi'} ${score.us} – ${score.them} ${match.opponent}`;
+  }
 }
 
 function renderScoreboard(match) {
@@ -539,6 +554,7 @@ function renderClock(match) {
 
 $('btn-clock').addEventListener('click', () => {
   const match = currentMatch();
+  if (match.finished) return;
   const c = match.clock;
   if (c.running) {
     pauseClock(match);
@@ -566,16 +582,53 @@ setInterval(() => {
   renderClock(match);
 }, 250);
 
-// ---------- Kampmeny (omgang og sletting) ----------
+// ---------- Kampmeny (statistikk, omgang, avslutt, slett) ----------
 
 $('btn-match-menu').addEventListener('click', () => {
   const match = currentMatch();
   $('menu-title').textContent = matchTitle(match);
   $('btn-half').textContent = match.clock.half === 1 ? 'Start 2. omgang' : 'Tilbake til 1. omgang';
+  $('btn-half').hidden = !!match.finished;
+  $('btn-finish').textContent = match.finished ? 'Gjenåpne kamp' : 'Avslutt kamp';
   $('match-menu').showModal();
 });
 
 $('btn-close-menu').addEventListener('click', () => $('match-menu').close());
+
+$('btn-menu-stats').addEventListener('click', () => {
+  $('match-menu').close();
+  openStats(currentMatchId);
+});
+
+$('btn-finished-stats').addEventListener('click', () => openStats(currentMatchId));
+
+$('btn-finish').addEventListener('click', async () => {
+  $('match-menu').close();
+  const match = currentMatch();
+
+  if (match.finished) {
+    match.finished = false;
+    saveData();
+    renderMatch();
+    showToast('Kampen er åpnet igjen');
+    return;
+  }
+
+  const score = matchScore(match);
+  const ok = await ask({
+    title: 'Avslutte kampen?',
+    message: `Sluttresultat ${team().name || 'Vi'} ${score.us} – ${score.them} ${match.opponent}. ` +
+             'Klokka stoppes og registreringen låses. Du kan gjenåpne kampen senere.',
+    okText: 'Avslutt kamp'
+  });
+  if (!ok) return;
+  pauseClock(match);
+  match.finished = true;
+  match.finishedAt = Date.now();
+  saveData();
+  renderMatch();
+  openStats(match.id);
+});
 
 $('btn-half').addEventListener('click', async () => {
   $('match-menu').close();
@@ -734,6 +787,7 @@ function renderSummary(match) {
 
 function registerShot(result) {
   const match = currentMatch();
+  if (match.finished) return showToast('Kampen er avsluttet. Gjenåpne den i menyen ⋯');
   if (draft.side === 'us' && !draft.playerId) return showToast('Velg hvem som skjøt');
   if (!draft.area) return showToast('Trykk på banen der skuddet kom fra');
   if (result !== 'miss' && draft.zone === null) return showToast('Trykk hvor på målet skuddet gikk');
@@ -787,17 +841,26 @@ function svgEl(tag, attrs, parent) {
   return node;
 }
 
-function buildCourt() {
-  const svg = $('court');
+// Tegner banen i en <svg>. Brukes både i registreringen og i statistikken,
+// så id-ene får et eget prefiks per tegning.
+function buildCourt(svg, prefix, withLabels) {
+  const id = (name) => `${prefix}-${name}`;
   const defs = svgEl('defs', {}, svg);
-  const clip = svgEl('clipPath', { id: 'clip-in9' }, defs);
+  const clip = svgEl('clipPath', { id: id('in9') }, defs);
   svgEl('path', { d: arcPath(9, true) }, clip);
-  const mask = svgEl('mask', { id: 'mask-out9' }, defs);
-  svgEl('rect', { x: 0, y: 0, width: 200, height: 140, fill: '#fff' }, mask);
-  svgEl('path', { d: arcPath(9, true), fill: '#000' }, mask);
+
+  // Utenfor 9 m (for kanthjørnene)
+  const outside = svgEl('mask', { id: id('out9') }, defs);
+  svgEl('rect', { x: 0, y: 0, width: 200, height: 140, fill: '#fff' }, outside);
+  svgEl('path', { d: arcPath(9, true), fill: '#000' }, outside);
+
+  // Utenfor 9 m, men uten kanthjørnene (for backsonene)
+  const backs = svgEl('mask', { id: id('backs') }, defs);
+  svgEl('rect', { x: 0, y: 0, width: 200, height: 140, fill: '#fff' }, backs);
+  svgEl('path', { d: arcPath(9, true), fill: '#000' }, backs);
   const wings = AREAS.filter((a) => a.wing);
-  wings.forEach((area) => {   // kanthjørnene hører ikke til backsonene
-    svgEl('rect', { x: toSvgX(area.x1), y: 10, width: (area.x2 - area.x1) * 10, height: WING_DEPTH * 10, fill: '#000' }, mask);
+  wings.forEach((area) => {
+    svgEl('rect', { x: toSvgX(area.x1), y: 10, width: (area.x2 - area.x1) * 10, height: WING_DEPTH * 10, fill: '#000' }, backs);
   });
 
   svgEl('rect', { class: 'court-floor', x: 0, y: 10, width: 200, height: 130 }, svg);
@@ -808,23 +871,25 @@ function buildCourt() {
       class: 'area',
       'data-area': area.id,
       x: toSvgX(area.x1), y: 10, width: (area.x2 - area.x1) * 10, height: 130,
-      [area.inner ? 'clip-path' : 'mask']: area.inner ? 'url(#clip-in9)' : 'url(#mask-out9)'
+      [area.inner ? 'clip-path' : 'mask']: area.inner ? `url(#${id('in9')})` : `url(#${id('backs')})`
     }, svg);
   });
+  // Kanthjørnene utenfor 9 m hører også til kantsonene
   wings.forEach((area) => {
     svgEl('rect', {
       class: 'area',
       'data-area': area.id,
-      x: toSvgX(area.x1), y: 10, width: (area.x2 - area.x1) * 10, height: WING_DEPTH * 10
+      x: toSvgX(area.x1), y: 10, width: (area.x2 - area.x1) * 10, height: WING_DEPTH * 10,
+      mask: `url(#${id('out9')})`
     }, svg);
   });
 
   // Skillelinjer mellom sonene
   [-6.5, -2.5, 2.5, 6.5].forEach((x) => {
-    svgEl('line', { class: 'court-divider', x1: toSvgX(x), y1: 10, x2: toSvgX(x), y2: 110, 'clip-path': 'url(#clip-in9)' }, svg);
+    svgEl('line', { class: 'court-divider', x1: toSvgX(x), y1: 10, x2: toSvgX(x), y2: 110, 'clip-path': `url(#${id('in9')})` }, svg);
   });
   [-3.5, 3.5].forEach((x) => {
-    svgEl('line', { class: 'court-divider', x1: toSvgX(x), y1: 10, x2: toSvgX(x), y2: 140, mask: 'url(#mask-out9)' }, svg);
+    svgEl('line', { class: 'court-divider', x1: toSvgX(x), y1: 10, x2: toSvgX(x), y2: 140, mask: `url(#${id('backs')})` }, svg);
   });
   // Grensen under kanthjørnene, fra sidelinja inn til 9-meteren
   const wingEdge = (1.5 + Math.sqrt(81 - WING_DEPTH ** 2)) * 10;
@@ -836,12 +901,17 @@ function buildCourt() {
   svgEl('line', { class: 'court-line', x1: 95, y1: toSvgY(7), x2: 105, y2: toSvgY(7) }, svg);
   svgEl('line', { class: 'court-line', x1: 0, y1: 10, x2: 200, y2: 10 }, svg);
 
-  AREAS.forEach((area) => {
-    svgEl('text', { class: 'court-text', x: area.lx, y: area.ly }, svg).textContent = area.short;
-  });
+  if (withLabels) {
+    AREAS.forEach((area) => {
+      svgEl('text', { class: 'court-text', x: area.lx, y: area.ly }, svg).textContent = area.short;
+    });
+  }
+}
 
+function buildRegistrationCourt() {
+  const svg = $('court');
+  buildCourt(svg, 'reg', true);
   svgEl('circle', { class: 'court-dot', id: 'court-dot', r: 3.5, visibility: 'hidden' }, svg);
-
   svg.addEventListener('click', onCourtClick);
 }
 
@@ -1018,6 +1088,344 @@ $('btn-undo').addEventListener('click', () => {
 });
 
 // =========================================================
+// STATISTIKK
+// =========================================================
+//
+// Alt regnes ut fra skuddene som er lagret, så statistikken er riktig
+// også midt i en kamp (for eksempel i pausen).
+
+let statsMatchId = 'all';   // 'all' eller id til én kamp
+let statsSide = 'us';       // 'us' = våre skudd, 'them' = motstanderens skudd mot oss
+
+// Hvor teksten står i hver sone på banekartet: [x, y for sonenavnet]
+const STATS_LABEL_POS = {
+  lw: [17, 26], rw: [183, 26],
+  l69: [50, 72], m69: [100, 77], r69: [150, 72],
+  l9: [32, 116], m9: [100, 116], r9: [168, 116]
+};
+
+function pct(part, whole) {
+  return whole ? Math.round((part / whole) * 100) + ' %' : '–';
+}
+
+function openStats(matchId) {
+  statsMatchId = matchId || 'all';
+  showView('stats');
+}
+
+function statsMatches() {
+  const matches = team().matches;
+  return statsMatchId === 'all' ? matches : matches.filter((m) => m.id === statsMatchId);
+}
+
+// Teller skudd, mål, redninger og utenfor.
+function tally(shots) {
+  const t = { shots: shots.length, goals: 0, saves: 0, misses: 0 };
+  shots.forEach((s) => {
+    if (s.result === 'goal') t.goals++;
+    else if (s.result === 'save') t.saves++;
+    else t.misses++;
+  });
+  t.onTarget = t.goals + t.saves;
+  return t;
+}
+
+function groupBy(items, keyFn) {
+  const groups = new Map();
+  items.forEach((item) => {
+    const key = keyFn(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+  return groups;
+}
+
+// Hovedtallet for en gruppe skudd: mål for oss, redninger for keeperen.
+function headline(t) {
+  return statsSide === 'us'
+    ? { part: t.goals, whole: t.shots, word: 'mål' }
+    : { part: t.saves, whole: t.onTarget, word: 'redn.' };
+}
+
+function renderStatsSelect() {
+  const matches = [...team().matches].sort(
+    (a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt
+  );
+  if (statsMatchId !== 'all' && !matches.some((m) => m.id === statsMatchId)) statsMatchId = 'all';
+
+  const select = $('stats-match');
+  select.replaceChildren(new Option(`Alle kamper (${matches.length})`, 'all'));
+  matches.forEach((m) => {
+    const s = matchScore(m);
+    const label = `${formatDate(m.date)} · ${m.opponent} ${s.us}–${s.them}` + (m.finished ? '' : ' (pågår)');
+    select.append(new Option(label, m.id));
+  });
+  select.value = statsMatchId;
+}
+
+$('stats-match').addEventListener('change', (event) => {
+  statsMatchId = event.target.value;
+  renderStats();
+});
+$('stats-side').addEventListener('change', (event) => {
+  statsSide = event.target.value;
+  renderStats();
+});
+$('btn-stats-open-match').addEventListener('click', () => openMatch(statsMatchId));
+
+function renderStats() {
+  renderStatsSelect();
+  $('stats-side').querySelector(`input[value="${statsSide}"]`).checked = true;
+  $('view-stats').classList.toggle('stats-them', statsSide === 'them');
+
+  const matches = statsMatches();
+  const single = statsMatchId === 'all' ? null : matches[0];
+  $('stats-head').hidden = !single;
+  if (single) {
+    const s = matchScore(single);
+    $('stats-head-title').textContent = `${team().name || 'Vi'} ${s.us} – ${s.them} ${single.opponent}`;
+    $('stats-head-meta').textContent =
+      `${formatDate(single.date)} · ${single.home ? 'Hjemme' : 'Borte'} · ${single.finished ? 'Ferdig' : 'Pågår'}`;
+  }
+
+  const shots = matches.flatMap((m) =>
+    m.shots.filter((s) => s.side === statsSide).map((s) => ({ ...s, match: m })));
+
+  $('stats-empty').textContent = team().matches.length
+    ? 'Ingen skudd registrert for dette valget ennå.'
+    : 'Ingen kamper ennå. Start en kamp under «Kamper».';
+  $('stats-empty').hidden = shots.length > 0;
+  $('stats-content').hidden = shots.length === 0;
+  if (!shots.length) return;
+
+  renderKpis(shots);
+  renderStatsGoal(shots);
+  renderStatsCourt(shots);
+  renderStatsTables(shots);
+}
+
+// ---------- Nøkkeltall ----------
+
+function kpi(label, value, sub, main) {
+  const box = el('div', 'kpi' + (main ? ' kpi-main' : ''));
+  box.append(el('p', 'kpi-label', label), el('p', 'kpi-value', value));
+  if (sub) box.append(el('p', 'kpi-sub', sub));
+  return box;
+}
+
+function renderKpis(shots) {
+  const t = tally(shots);
+  const box = $('stats-kpis');
+  box.replaceChildren();
+  if (statsSide === 'us') {
+    box.append(
+      kpi('Skuddeffektivitet', pct(t.goals, t.shots), `${t.goals} mål på ${t.shots} skudd`, true),
+      kpi('Mål', t.goals),
+      kpi('Reddet av keeper', t.saves, `${pct(t.saves, t.shots)} av skuddene`),
+      kpi('Utenfor', t.misses, `${pct(t.misses, t.shots)} av skuddene`)
+    );
+  } else {
+    box.append(
+      kpi('Redningsprosent', pct(t.saves, t.onTarget), `${t.saves} av ${t.onTarget} skudd på mål`, true),
+      kpi('Redninger', t.saves),
+      kpi('Mål imot', t.goals, `på ${t.shots} skudd totalt`),
+      kpi('Utenfor', t.misses, `${pct(t.misses, t.shots)} av skuddene`)
+    );
+  }
+}
+
+// ---------- Målkart ----------
+
+function sideColor() {
+  return statsSide === 'us' ? 'var(--green)' : 'var(--red)';
+}
+
+function renderStatsGoal(shots) {
+  const isUs = statsSide === 'us';
+  $('stats-goal-hint').textContent = isUs
+    ? 'Mål av skudd i hver rute. Mørkere rute = flere skudd.'
+    : 'Redninger av skudd på mål i hver rute. Mørkere rute = flere skudd.';
+
+  const byZone = groupBy(shots.filter((s) => s.zone !== null && s.zone !== undefined), (s) => s.zone);
+  const max = Math.max(1, ...[...byZone.values()].map((list) => list.length));
+
+  const goal = $('stats-goal');
+  goal.replaceChildren();
+  for (let zone = 0; zone < 9; zone++) {
+    const list = byZone.get(zone) || [];
+    const t = tally(list);
+    const h = headline(t);
+    const cell = el('div', 'stat-zone');
+    if (list.length) {
+      const strength = Math.round(10 + 50 * (list.length / max));
+      cell.style.background = `color-mix(in srgb, ${sideColor()} ${strength}%, white)`;
+      cell.append(el('b', '', `${h.part}/${h.whole}`), el('small', '', pct(h.part, h.whole)));
+    }
+    cell.title = `${zoneName(zone)}: ${list.length} skudd, ${t.goals} mål, ${t.saves} redninger`;
+    goal.append(cell);
+  }
+
+  const misses = shots.filter((s) => s.result === 'miss').length;
+  $('stats-goal-below').replaceChildren(
+    document.createTextNode('Utenfor / stolpe: '), el('b', '', misses),
+    document.createTextNode(` av ${shots.length} skudd`)
+  );
+}
+
+// ---------- Banekart ----------
+
+function renderStatsCourt(shots) {
+  const isUs = statsSide === 'us';
+  $('stats-court-hint').textContent = isUs
+    ? 'Mål av skudd fra hver sone. Mørkere sone = flere skudd.'
+    : 'Redninger av skudd på mål fra hver sone. Mørkere sone = flere skudd.';
+
+  const courtShots = shots.filter((s) => getArea(s.area) && s.area !== AREA_7M.id);
+  const byArea = groupBy(courtShots, (s) => s.area);
+  const max = Math.max(1, ...[...byArea.values()].map((list) => list.length));
+  const svg = $('stats-court');
+
+  // Farg sonene etter antall skudd
+  svg.querySelectorAll('.area').forEach((rect) => {
+    const list = byArea.get(rect.dataset.area) || [];
+    const t = tally(list);
+    rect.style.fill = sideColor();
+    rect.style.fillOpacity = list.length ? (0.1 + 0.45 * (list.length / max)).toFixed(2) : 0;
+    rect.replaceChildren();
+    const title = svgEl('title', {}, rect);
+    title.textContent = `${getArea(rect.dataset.area).label}: ${list.length} skudd, ${t.goals} mål, ${t.saves} redninger`;
+  });
+
+  const layer = $('stats-court-layer');
+  layer.replaceChildren();
+
+  // Hvert skudd som et punkt der det ble tatt (grunnlaget for varmekart)
+  courtShots.filter((s) => s.pos).forEach((s) => {
+    const cx = toSvgX(s.pos.x);
+    const cy = toSvgY(s.pos.y);
+    if (s.result === 'save') {
+      svgEl('rect', { class: 'dot-save', x: cx - 2.3, y: cy - 2.3, width: 4.6, height: 4.6 }, layer);
+    } else if (s.result === 'goal') {
+      svgEl('circle', { class: 'dot-goal', cx, cy, r: 2.6 }, layer);
+    } else {
+      svgEl('circle', { class: 'dot-miss', cx, cy, r: 2.1 }, layer);
+    }
+  });
+
+  // Tall per sone
+  AREAS.forEach((area) => {
+    const list = byArea.get(area.id) || [];
+    const [x, y] = STATS_LABEL_POS[area.id];
+    svgEl('text', { class: 'stat-text name', x, y }, layer).textContent = area.short;
+    if (!list.length) return;
+    const h = headline(tally(list));
+    svgEl('text', { class: 'stat-text', x, y: y + 8 }, layer).textContent = `${h.part}/${h.whole} ${h.word}`;
+    svgEl('text', { class: 'stat-text', x, y: y + 15 }, layer).textContent = pct(h.part, h.whole);
+  });
+
+  // 7-metere og eldre skudd uten sone
+  const below = $('stats-court-below');
+  below.replaceChildren();
+  const penalties = shots.filter((s) => s.area === AREA_7M.id || (!s.area && s.distance === '7m'));
+  const p = headline(tally(penalties));
+  below.append(document.createTextNode('7 m-kast: '),
+    el('b', '', penalties.length ? `${p.part}/${p.whole} ${p.word} (${pct(p.part, p.whole)})` : 'ingen'));
+  const noArea = shots.filter((s) => !s.area && s.distance !== '7m').length;
+  if (noArea) {
+    below.append(document.createTextNode(` · Uten sone (eldre registreringer): ${noArea}`));
+  }
+}
+
+// ---------- Tabeller ----------
+
+function fillTable(table, headers, rows, footer) {
+  table.replaceChildren();
+  const head = el('thead');
+  const headRow = el('tr');
+  headers.forEach((h) => headRow.append(el('th', '', h)));
+  head.append(headRow);
+  const body = el('tbody');
+  rows.forEach((cells) => {
+    const row = el('tr');
+    cells.forEach((c) => row.append(el('td', '', c)));
+    body.append(row);
+  });
+  table.append(head, body);
+  if (footer) {
+    const foot = el('tfoot');
+    const row = el('tr');
+    footer.forEach((c) => row.append(el('td', '', c)));
+    foot.append(row);
+    table.append(foot);
+  }
+}
+
+function isPenalty(s) {
+  return s.area === AREA_7M.id || (!s.area && s.distance === '7m');
+}
+
+function renderStatsTables(shots) {
+  const isUs = statsSide === 'us';
+  const total = tally(shots);
+
+  if (isUs) {
+    // Per spiller: skudd, mål, prosent og 7-metere
+    $('stats-table-title').textContent = 'Per spiller';
+    const rows = [...groupBy(shots, (s) => s.playerId).entries()]
+      .map(([id, list]) => {
+        const p = getPlayer(id);
+        const t = tally(list);
+        const pen = tally(list.filter(isPenalty));
+        return { name: p ? `#${p.number} ${p.name}` : 'Slettet spiller', t, pen };
+      })
+      .sort((a, b) => b.t.goals - a.t.goals || b.t.shots - a.t.shots)
+      .map((r) => [r.name, r.t.shots, r.t.goals, pct(r.t.goals, r.t.shots),
+        r.pen.shots ? `${r.pen.goals}/${r.pen.shots}` : '–']);
+    const pen = tally(shots.filter(isPenalty));
+    fillTable($('stats-table'), ['Spiller', 'Skudd', 'Mål', 'Effekt.', '7 m'], rows,
+      ['Totalt', total.shots, total.goals, pct(total.goals, total.shots), pen.shots ? `${pen.goals}/${pen.shots}` : '–']);
+  } else {
+    // Per keeper: skudd på mål, redninger og redningsprosent
+    $('stats-table-title').textContent = 'Per keeper';
+    const rows = [...groupBy(shots, (s) => s.keeperId).entries()]
+      .map(([id, list]) => {
+        const k = getPlayer(id);
+        const t = tally(list);
+        const pen = tally(list.filter(isPenalty));
+        return { name: k ? `#${k.number} ${k.name}` : 'Ingen keeper valgt', t, pen };
+      })
+      .sort((a, b) => b.t.onTarget - a.t.onTarget)
+      .map((r) => [r.name, r.t.onTarget, r.t.saves, pct(r.t.saves, r.t.onTarget),
+        r.pen.onTarget ? `${r.pen.saves}/${r.pen.onTarget}` : '–']);
+    const pen = tally(shots.filter(isPenalty));
+    fillTable($('stats-table'), ['Keeper', 'På mål', 'Redn.', 'Redn. %', '7 m'], rows,
+      ['Totalt', total.onTarget, total.saves, pct(total.saves, total.onTarget),
+        pen.onTarget ? `${pen.saves}/${pen.onTarget}` : '–']);
+  }
+
+  // Motstanderens skyttere (bare for «Keeper og forsvar»)
+  $('stats-opp-card').hidden = isUs;
+  if (!isUs) {
+    const allMatches = statsMatchId === 'all';
+    const rows = [...groupBy(shots, (s) => (allMatches ? s.match.opponent + ' ' : '') + (s.oppNumber ? '#' + s.oppNumber : 'Ukjent')).entries()]
+      .map(([name, list]) => ({ name, t: tally(list) }))
+      .sort((a, b) => b.t.goals - a.t.goals || b.t.shots - a.t.shots)
+      .map((r) => [r.name, r.t.shots, r.t.goals, pct(r.t.goals, r.t.shots)]);
+    fillTable($('stats-opp-table'), ['Skytter', 'Skudd', 'Mål', 'Effekt.'], rows);
+  }
+
+  // Per omgang
+  const halves = [1, 2].map((half) => tally(shots.filter((s) => s.half === half)));
+  const halfRow = (label, t) => (isUs
+    ? [label, t.shots, t.goals, pct(t.goals, t.shots)]
+    : [label, t.shots, t.goals, t.saves, pct(t.saves, t.onTarget)]);
+  fillTable($('stats-halves'),
+    isUs ? ['Omgang', 'Skudd', 'Mål', 'Effekt.'] : ['Omgang', 'Skudd', 'Mål imot', 'Redn.', 'Redn. %'],
+    [halfRow('1. omgang', halves[0]), halfRow('2. omgang', halves[1])],
+    halfRow('Totalt', total));
+}
+
+// =========================================================
 // SIKKERHETSKOPI
 // =========================================================
 
@@ -1071,7 +1479,9 @@ $('btn-reset').addEventListener('click', async () => {
 
 // ---------- Start appen ----------
 
-buildCourt();
+buildRegistrationCourt();
+buildCourt($('stats-court'), 'stats', false);
+svgEl('g', { id: 'stats-court-layer' }, $('stats-court'));
 
 function renderAll() {
   renderTeam();

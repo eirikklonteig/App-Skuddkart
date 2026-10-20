@@ -274,6 +274,17 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+.status {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+.status-live { background: #fdf0d2; color: #7a5300; }
+.status-done { background: var(--border); color: var(--text); }
 
 /* =========================================================
    KAMPVISNING – laget for å få plass på én mobilskjerm
@@ -661,6 +672,116 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   .tab svg { width: 20px; height: 20px; }
   .tab.active { border-bottom-color: var(--green); }
 }
+
+/* ---------- Avsluttet kamp ---------- */
+.finished-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--green);
+  padding: 16px;
+}
+.finished-title { margin: 0; font-weight: 700; }
+.finished-score { margin: 2px 0 8px; font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mb-play:disabled { opacity: .35; cursor: not-allowed; }
+
+/* =========================================================
+   STATISTIKK
+   ========================================================= */
+main:has(#view-stats:not([hidden])) { max-width: 960px; }
+
+select {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+.stats-controls { display: grid; gap: 4px; }
+.stats-controls .field { margin-bottom: 8px; }
+.stats-side label:first-child input:checked + span { background: var(--green); color: #fff; }
+.stats-side label:last-child input:checked + span { background: var(--red); color: #fff; }
+
+.stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stats-head-title { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.stats-head .muted { margin: 0; font-size: .85rem; }
+#stats-empty { margin-top: 16px; }
+
+/* Nøkkeltall */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+@media (min-width: 600px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+}
+.kpi-label { margin: 0; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.kpi-value { margin: 2px 0 0; font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi-sub { margin: 2px 0 0; font-size: .75rem; color: var(--muted); }
+.kpi-main { border-top: 4px solid var(--green); }
+.stats-them .kpi-main { border-top-color: var(--red); }
+
+.stats-maps { display: grid; gap: 16px; }
+@media (min-width: 760px) { .stats-maps { grid-template-columns: 1fr 1fr; } .stats-maps .card { margin-top: 16px; } }
+.stats-maps .card { margin-top: 16px; }
+.stats-below { margin: 8px 0 0; font-size: .85rem; color: var(--muted); }
+.stats-below b { color: var(--text); }
+
+/* Målkart: hver rute farges etter hvor mange skudd som gikk dit */
+.stat-goal { width: 100%; max-width: 420px; aspect-ratio: 3 / 2; }
+.stat-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1.15;
+}
+.stat-zone b { font-size: 1rem; color: var(--text); }
+.stat-zone small { font-size: .72rem; color: var(--text); opacity: .8; }
+
+/* Banekart i statistikken */
+.court-static { cursor: default; border-radius: 8px; }
+.court-static .area:hover { fill: inherit; }
+.stat-text {
+  font-size: 7px;
+  font-weight: 700;
+  fill: var(--text);
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, .85);
+  stroke-width: 2px;
+}
+.stat-text.name { font-weight: 600; fill: var(--muted); font-size: 6px; }
+.dot-goal { fill: var(--green); stroke: #fff; stroke-width: 1; }
+.stats-them .dot-goal { fill: var(--red); }
+.dot-save { fill: var(--text); stroke: #fff; stroke-width: 1; }
+.dot-miss { fill: #fff; stroke: var(--muted); stroke-width: 1.4; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 0; font-size: .8rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend svg { width: 12px; height: 12px; }
+
+/* Tabeller */
+.table-wrap { overflow-x: auto; margin-top: 8px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.stats-table th, .stats-table td { padding: 8px 6px; text-align: right; white-space: nowrap; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; white-space: normal; }
+.stats-table th { font-size: .72rem; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.stats-table tbody tr + tr td { border-top: 1px solid var(--border); }
+.stats-table tfoot td { border-top: 2px solid var(--border); font-weight: 700; }
+.stats-table .num { display: inline-block; min-width: 26px; font-weight: 700; }
 
 /* ---------- Kort beskjed (toast) ---------- */
 .toast {

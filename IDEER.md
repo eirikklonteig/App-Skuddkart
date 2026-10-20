@@ -11,8 +11,8 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - [x] Steg 2c: Ny registreringsside – spillere i kolonne til venstre, målet rett over banen,
       Mål | Redning | Utenfor, «siste skudd» med angre, alt på én mobilskjerm.
       Egne bekreftelsesvinduer (nettleserens egne blokkeres i enkelte nettlesere).
-- [ ] Steg 3: Legge på GitHub og publisere (så appen kan testes på mobil og iPad)
-- [ ] Steg 4: Statistikk (redningsprosent, skuddkart, per spiller, per sone, per omgang)
+- [x] Steg 3: Legge på GitHub og publisere (så appen kan testes på mobil og iPad)
+- [x] Steg 4: Statistikk (redningsprosent, skuddkart, per spiller, per sone, per omgang)
       + «Avslutt kamp» i ⋯-menyen: stopper klokka, markerer kampen som ferdig,
       låser registreringen, åpner kampens statistikk. «Gjenåpne kamp» for rettinger.
 - [ ] Steg 5: Hendelser – 2 minutter, gult kort (evt. rødt/blått) og time-out, med tid.

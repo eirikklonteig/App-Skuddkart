@@ -101,8 +101,17 @@
       </div>
 
       <div class="match-grid">
+        <!-- Vises når kampen er avsluttet (registreringen er da låst) -->
+        <div class="finished-card" id="finished-card" hidden>
+          <p class="finished-title">Kampen er avsluttet</p>
+          <p class="finished-score" id="finished-score"></p>
+          <p class="muted">Du kan fortsatt rette tid og slette skudd i tidslinjen.
+            Trenger du å registrere mer, velg «Gjenåpne kamp» i menyen ⋯.</p>
+          <button class="btn btn-primary" id="btn-finished-stats">Se statistikk</button>
+        </div>
+
         <!-- Registrering -->
-        <div class="reg-card">
+        <div class="reg-card" id="reg-card">
           <div class="segmented side-toggle" id="side-toggle">
             <label><input type="radio" name="side" value="us" checked><span>Vårt skudd</span></label>
             <label><input type="radio" name="side" value="them"><span>Deres skudd</span></label>
@@ -144,12 +153,72 @@
       </div>
     </section>
 
-    <!-- VISNING: Statistikk (kommer i steg 3) -->
+    <!-- VISNING: Statistikk -->
     <section class="view" id="view-stats" hidden>
-      <h2>Statistikk</h2>
-      <div class="coming">
-        <p><strong>Kommer i steg 3</strong></p>
-        <p>Her kommer redningsprosent, skuddkart og tall per spiller.</p>
+      <div class="view-head">
+        <h2>Statistikk</h2>
+      </div>
+
+      <!-- Valg: hvilken kamp, og våre skudd eller motstanderens -->
+      <div class="stats-controls">
+        <label class="field">
+          <span>Kamp</span>
+          <select id="stats-match"></select>
+        </label>
+        <div class="segmented stats-side" id="stats-side">
+          <label><input type="radio" name="stats-side" value="us" checked><span>Våre skudd</span></label>
+          <label><input type="radio" name="stats-side" value="them"><span>Keeper og forsvar</span></label>
+        </div>
+      </div>
+
+      <div class="card stats-head" id="stats-head" hidden>
+        <div>
+          <p class="stats-head-title" id="stats-head-title"></p>
+          <p class="muted" id="stats-head-meta"></p>
+        </div>
+        <button class="btn btn-secondary btn-small" id="btn-stats-open-match">Åpne kampen</button>
+      </div>
+
+      <p class="empty" id="stats-empty">Ingen skudd registrert ennå.</p>
+
+      <div id="stats-content">
+        <div class="kpis" id="stats-kpis"></div>
+
+        <div class="stats-maps">
+          <div class="card">
+            <h3 id="stats-goal-title">Hvor på målet</h3>
+            <p class="muted small-left" id="stats-goal-hint"></p>
+            <div class="goal stat-goal" id="stats-goal"></div>
+            <p class="stats-below" id="stats-goal-below"></p>
+          </div>
+          <div class="card">
+            <h3>Hvor fra på banen</h3>
+            <p class="muted small-left" id="stats-court-hint"></p>
+            <svg class="court court-static" id="stats-court" viewBox="0 10 200 130"
+                 role="img" aria-label="Banekart med skudd per sone"></svg>
+            <p class="legend">
+              <span><svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" class="dot-goal"/></svg>Mål</span>
+              <span><svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" class="dot-save"/></svg>Redning</span>
+              <span><svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.4" class="dot-miss"/></svg>Utenfor</span>
+            </p>
+            <p class="stats-below" id="stats-court-below"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 id="stats-table-title">Per spiller</h3>
+          <div class="table-wrap"><table class="stats-table" id="stats-table"></table></div>
+        </div>
+
+        <div class="card" id="stats-opp-card">
+          <h3>Motstanderens skyttere</h3>
+          <div class="table-wrap"><table class="stats-table" id="stats-opp-table"></table></div>
+        </div>
+
+        <div class="card">
+          <h3>Per omgang</h3>
+          <div class="table-wrap"><table class="stats-table" id="stats-halves"></table></div>
+        </div>
       </div>
     </section>
 
@@ -178,7 +247,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.5</p>
+      <p class="muted small">Skuddkart versjon 0.6</p>
     </section>
   </main>
 
@@ -259,7 +328,9 @@
   <dialog id="match-menu">
     <h3 id="menu-title">Kamp</h3>
     <div class="menu-list">
+      <button type="button" class="btn btn-secondary" id="btn-menu-stats">Statistikk for kampen</button>
       <button type="button" class="btn btn-secondary" id="btn-half">Start 2. omgang</button>
+      <button type="button" class="btn btn-secondary" id="btn-finish">Avslutt kamp</button>
       <button type="button" class="btn btn-ghost-danger" id="btn-delete-match">Slett kamp</button>
       <button type="button" class="btn btn-primary" id="btn-close-menu">Lukk</button>
     </div>
