@@ -1,0 +1,10 @@
+# Innstillinger for Claude (lokale, skal ikke på GitHub)
+.claude/
+
+# Sikkerhetskopier fra appen (kan inneholde spillernavn)
+skuddkart-kopi-*.json
+
+# Systemfiler
+Thumbs.db
+desktop.ini
+.DS_Store

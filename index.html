@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#00965E">
+  <title>Skuddkart</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Toppfelt med logo og lagnavn -->
+  <header class="topbar">
+    <img src="icon.svg" alt="" class="logo">
+    <div>
+      <h1>Skuddkart</h1>
+      <p class="team-name" id="topbar-team">Tune IL</p>
+    </div>
+  </header>
+
+  <!-- Menyen (nederst på mobil, øverst på PC) -->
+  <nav class="tabbar">
+    <button class="tab active" data-view="team">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c3.2-.4 5.5 1.7 5.5 4.8"/></svg>
+      Laget
+    </button>
+    <button class="tab" data-view="matches">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V6h18v14"/><path d="M3 10h18M9 6v14M15 6v14"/></svg>
+      Kamper
+    </button>
+    <button class="tab" data-view="stats">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/></svg>
+      Statistikk
+    </button>
+    <button class="tab" data-view="more">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+      Mer
+    </button>
+  </nav>
+
+  <main>
+    <!-- VISNING: Laget -->
+    <section class="view" id="view-team">
+      <div class="view-head">
+        <h2>Laget</h2>
+        <button class="btn btn-primary" id="btn-add-player">+ Ny spiller</button>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Lagnavn</span>
+          <input type="text" id="input-team-name" maxlength="40">
+        </label>
+        <label class="field field-narrow">
+          <span>Omgang (min)</span>
+          <input type="number" id="input-team-half" min="5" max="30" inputmode="numeric">
+        </label>
+      </div>
+
+      <p class="empty" id="empty-players">
+        Ingen spillere ennå. Trykk «+ Ny spiller» for å legge til den første.
+      </p>
+
+      <div id="player-groups">
+        <h3 class="list-title">Keepere <span class="count" id="count-keepers"></span></h3>
+        <ul class="player-list" id="list-keepers"></ul>
+
+        <h3 class="list-title">Utespillere <span class="count" id="count-players"></span></h3>
+        <ul class="player-list" id="list-players"></ul>
+      </div>
+    </section>
+
+    <!-- VISNING: Kampliste -->
+    <section class="view" id="view-matches" hidden>
+      <div class="view-head">
+        <h2>Kamper</h2>
+        <button class="btn btn-primary" id="btn-new-match">+ Ny kamp</button>
+      </div>
+      <p class="empty" id="empty-matches">
+        Ingen kamper ennå. Trykk «+ Ny kamp» for å starte.
+      </p>
+      <ul class="card-list" id="list-matches"></ul>
+    </section>
+
+    <!-- VISNING: Én kamp (registrering) -->
+    <section class="view" id="view-match" hidden>
+      <!-- Smal resultatlinje med klokke -->
+      <div class="match-bar">
+        <button class="mb-btn" id="btn-back" aria-label="Tilbake til kamper">‹</button>
+        <div class="mb-score">
+          <span class="mb-name mb-name-us" id="sb-us-name"></span>
+          <span class="mb-goals"><span class="us" id="sb-us">0</span>–<span class="them" id="sb-them">0</span></span>
+          <span class="mb-name mb-name-them" id="sb-them-name"></span>
+        </div>
+        <div class="mb-clock">
+          <div class="clock-time" id="clock-time">00:00</div>
+          <div class="clock-half" id="clock-half">1. omg</div>
+        </div>
+        <button class="mb-btn mb-play" id="btn-clock" aria-label="Start klokka">▶</button>
+        <button class="mb-btn" id="btn-match-menu" aria-label="Kampmeny">⋯</button>
+      </div>
+
+      <div class="match-grid">
+        <!-- Registrering -->
+        <div class="reg-card">
+          <div class="segmented side-toggle" id="side-toggle">
+            <label><input type="radio" name="side" value="us" checked><span>Vårt skudd</span></label>
+            <label><input type="radio" name="side" value="them"><span>Deres skudd</span></label>
+          </div>
+
+          <div class="reg">
+            <div class="reg-players" id="reg-players"></div>
+
+            <div class="reg-field">
+              <div class="goal" id="goal" aria-label="Målet sett fra skytteren"></div>
+              <svg class="court" id="court" viewBox="0 10 200 130"
+                   role="img" aria-label="Banen sett fra skytteren. Trykk der skuddet kom fra."></svg>
+              <div class="reg-summary">
+                <span id="draft-summary"></span>
+                <button type="button" class="chip chip-small" id="btn-7m" aria-pressed="false">7 m</button>
+              </div>
+
+              <div class="result-row">
+                <button class="btn btn-result btn-goal" id="btn-goal">Mål</button>
+                <button class="btn btn-result btn-save" id="btn-save">Redning</button>
+                <button class="btn btn-result btn-miss" id="btn-out">Utenfor</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="last-shot">
+            <span class="last-text" id="last-shot"></span>
+            <button class="btn btn-secondary btn-small" id="btn-undo">↶ Angre</button>
+          </div>
+        </div>
+
+        <!-- Tidslinje -->
+        <div class="panel">
+          <h3>Tidslinje</h3>
+          <p class="muted small-left" id="timeline-hint">Trykk på tiden for å rette den.</p>
+          <ol class="timeline" id="timeline"></ol>
+          <p class="empty" id="empty-timeline">Ingen skudd registrert ennå.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISNING: Statistikk (kommer i steg 3) -->
+    <section class="view" id="view-stats" hidden>
+      <h2>Statistikk</h2>
+      <div class="coming">
+        <p><strong>Kommer i steg 3</strong></p>
+        <p>Her kommer redningsprosent, skuddkart og tall per spiller.</p>
+      </div>
+    </section>
+
+    <!-- VISNING: Mer (sikkerhetskopi) -->
+    <section class="view" id="view-more" hidden>
+      <h2>Mer</h2>
+
+      <div class="card">
+        <h3>Sikkerhetskopi</h3>
+        <p class="muted">
+          Alt lagres i denne nettleseren. Ta en kopi jevnlig, eller bruk den
+          for å flytte data mellom PC og mobil.
+        </p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-export">Lagre kopi til fil</button>
+          <label class="btn btn-secondary">
+            Hent kopi fra fil
+            <input type="file" id="input-import" accept=".json,application/json" hidden>
+          </label>
+        </div>
+      </div>
+
+      <div class="card card-danger">
+        <h3>Slett alt</h3>
+        <p class="muted">Fjerner alle spillere og kamper fra denne nettleseren.</p>
+        <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
+      </div>
+
+      <p class="muted small">Skuddkart versjon 0.5</p>
+    </section>
+  </main>
+
+  <!-- Skjema for å legge til / endre spiller -->
+  <dialog id="player-dialog">
+    <form id="player-form">
+      <h3 id="player-dialog-title">Ny spiller</h3>
+
+      <label class="field">
+        <span>Draktnummer</span>
+        <input type="number" id="input-number" min="1" max="99" inputmode="numeric" required>
+      </label>
+
+      <label class="field">
+        <span>Navn</span>
+        <input type="text" id="input-name" maxlength="40" required autocomplete="off">
+      </label>
+
+      <fieldset class="field">
+        <legend>Rolle</legend>
+        <div class="segmented">
+          <label><input type="radio" name="role" value="player" checked><span>Utespiller</span></label>
+          <label><input type="radio" name="role" value="keeper"><span>Keeper</span></label>
+        </div>
+      </fieldset>
+
+      <p class="form-error" id="player-error" hidden></p>
+
+      <div class="btn-row end">
+        <button type="button" class="btn btn-ghost-danger" id="btn-delete-player" hidden>Slett</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-player">Avbryt</button>
+        <button type="submit" class="btn btn-primary">Lagre</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Skjema for ny kamp -->
+  <dialog id="match-dialog">
+    <form id="match-form">
+      <h3>Ny kamp</h3>
+
+      <label class="field">
+        <span>Motstander</span>
+        <input type="text" id="input-opponent" maxlength="40" required autocomplete="off">
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Dato</span>
+          <input type="date" id="input-date" required>
+        </label>
+        <label class="field field-narrow">
+          <span>Omgang (min)</span>
+          <input type="number" id="input-match-half" min="5" max="30" inputmode="numeric" required>
+        </label>
+      </div>
+
+      <fieldset class="field">
+        <legend>Hvor spilles kampen?</legend>
+        <div class="segmented">
+          <label><input type="radio" name="venue" value="home" checked><span>Hjemme</span></label>
+          <label><input type="radio" name="venue" value="away"><span>Borte</span></label>
+        </div>
+      </fieldset>
+
+      <p class="form-error" id="match-error" hidden></p>
+
+      <div class="btn-row end">
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-match">Avbryt</button>
+        <button type="submit" class="btn btn-primary">Start kamp</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Kampmeny -->
+  <dialog id="match-menu">
+    <h3 id="menu-title">Kamp</h3>
+    <div class="menu-list">
+      <button type="button" class="btn btn-secondary" id="btn-half">Start 2. omgang</button>
+      <button type="button" class="btn btn-ghost-danger" id="btn-delete-match">Slett kamp</button>
+      <button type="button" class="btn btn-primary" id="btn-close-menu">Lukk</button>
+    </div>
+  </dialog>
+
+  <!-- Felles vindu for «Er du sikker?» og korte spørsmål -->
+  <dialog id="ask-dialog">
+    <form id="ask-form">
+      <h3 id="ask-title"></h3>
+      <p class="muted" id="ask-message"></p>
+      <input type="text" id="ask-input" autocomplete="off" hidden>
+      <div class="btn-row end">
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-secondary" id="ask-cancel">Avbryt</button>
+        <button type="submit" class="btn btn-primary" id="ask-ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Kort beskjed nederst på skjermen -->
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

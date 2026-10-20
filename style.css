@@ -1,0 +1,681 @@
+/* =========================================================
+   Skuddkart – utseende
+   Fargene samles her øverst, så de er lette å endre.
+   ========================================================= */
+:root {
+  --green: #00965E;        /* Tune grønn: hovedfarge, mål for oss */
+  --green-dark: #007a4c;
+  --green-soft: #e3f4ec;
+  --red: #BE312F;          /* Tune rød: mål imot, slett */
+  --red-soft: #f8e6e5;
+
+  --bg: #f3f6f4;
+  --surface: #ffffff;
+  --text: #17211c;
+  --muted: #5b6a63;
+  --border: #dbe3df;
+
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 4px 14px rgba(0, 0, 0, .05);
+  --tabbar-height: 64px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+  /* Plass til menyen nederst på mobil */
+  padding-bottom: calc(var(--tabbar-height) + 16px + env(safe-area-inset-bottom));
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.05rem; }
+
+/* ---------- Toppfelt ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--green);
+  color: #fff;
+}
+.logo { width: 40px; height: 40px; border-radius: 10px; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+.topbar h1 { font-size: 1.25rem; letter-spacing: .3px; }
+.team-name { margin: 0; font-size: .85rem; opacity: .9; }
+
+/* ---------- Innhold ---------- */
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+.view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ---------- Skjemafelt ---------- */
+.field { display: block; margin: 0 0 16px; border: 0; padding: 0; }
+.field > span, .field > legend {
+  display: block;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+  padding: 0;
+}
+.field-row { display: flex; gap: 12px; }
+.field-row .field { flex: 1; }
+.field-row .field-narrow { flex: 0 0 120px; }
+
+input[type="text"], input[type="number"], input[type="date"] {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+input:focus-visible, button:focus-visible, .btn:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--green) 45%, transparent);
+  outline-offset: 2px;
+}
+
+/* To-valgs bryter (Utespiller / Keeper, Hjemme / Borte, Vårt / Deres) */
+.segmented { display: flex; background: var(--bg); border-radius: 10px; padding: 4px; gap: 4px; }
+.segmented label { flex: 1; }
+.segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.segmented span {
+  display: block;
+  text-align: center;
+  padding: 9px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
+}
+.segmented input:checked + span { background: var(--surface); color: var(--green-dark); box-shadow: var(--shadow); }
+.segmented input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--green) 45%, transparent); }
+
+/* ---------- Knapper ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;            /* lett å treffe med fingeren */
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--green); color: #fff; }
+.btn-primary:hover { background: var(--green-dark); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover { border-color: var(--muted); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-ghost-danger { background: transparent; color: var(--red); }
+.btn-ghost-danger:hover { background: var(--red-soft); }
+.btn-small { min-height: 36px; padding: 0 12px; font-size: .9rem; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-row.end { align-items: center; margin-top: 8px; }
+.spacer { flex: 1; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.chip-small { flex: none; min-height: 32px; padding: 0 10px; font-size: .8rem; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: #fff; }
+.side-them .chip[aria-pressed="true"] { background: var(--red); border-color: var(--red); }
+
+/* ---------- Spillerliste (Laget) ---------- */
+.list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 8px;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--muted);
+}
+.count {
+  background: var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: .75rem;
+}
+.player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.player-list:empty { display: none; }
+.player-list li + li { border-top: 1px solid var(--border); }
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.player-row:hover { background: var(--bg); }
+.shirt {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.shirt.keeper { background: var(--text); }
+.player-name { flex: 1; font-weight: 500; }
+.chevron { color: var(--muted); }
+
+.empty, .coming {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+}
+.coming p { margin: 4px 0; }
+.coming { margin-top: 16px; }
+
+/* ---------- Kort (Mer-siden) ---------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-top: 16px;
+}
+.card h3 { margin-bottom: 6px; }
+.card-danger { border-left: 4px solid var(--red); }
+.muted { color: var(--muted); margin: 0 0 12px; }
+.small { font-size: .8rem; margin-top: 24px; text-align: center; }
+
+/* ---------- Kampliste ---------- */
+.card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.card-list:empty { display: none; }
+.match-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.match-row:hover { outline: 2px solid var(--green-soft); }
+.match-date { font-size: .8rem; color: var(--muted); }
+.match-title { font-weight: 600; grid-column: 1; }
+.match-score {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================
+   KAMPVISNING – laget for å få plass på én mobilskjerm
+   ========================================================= */
+
+/* Toppfelt og meny skjules mens en kamp er åpen */
+body.in-match { padding-bottom: 16px; }
+body.in-match .topbar,
+body.in-match .tabbar { display: none; }
+body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
+
+/* Smal resultatlinje */
+.match-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: var(--text);
+  color: #fff;
+  border-radius: var(--radius);
+}
+.mb-btn {
+  flex: none;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.mb-btn:hover { background: rgba(255, 255, 255, .12); }
+.mb-play { background: var(--green); font-size: 1rem; }
+.mb-play:hover { background: var(--green-dark); }
+.mb-play.running { background: #f5c66b; color: var(--text); }
+.mb-score {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mb-name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .8rem;
+  opacity: .85;
+}
+.mb-name-us { text-align: right; }
+.mb-goals { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mb-goals .us { color: #5fd3a4; }
+.mb-goals .them { color: #f08a88; }
+.mb-clock { flex: none; text-align: center; line-height: 1.1; padding: 0 4px; }
+.clock-time { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clock-time.ended { color: #f5c66b; }
+.clock-half { font-size: .68rem; opacity: .75; }
+
+/* Registreringen øverst, tidslinjen under (man scroller ned til den) */
+.match-grid { display: grid; gap: 12px; margin-top: 8px; }
+
+.reg-card, .panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px;
+}
+.panel { padding: 14px; }
+
+.side-toggle span { padding: 9px 8px; }
+.side-toggle label:first-child input:checked + span { background: var(--green); color: #fff; }
+.side-toggle label:last-child input:checked + span { background: var(--red); color: #fff; }
+
+/* Spillere til venstre, mål og bane til høyre */
+.reg {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+  align-items: start;
+}
+.reg-players {
+  display: grid;
+  grid-template-columns: repeat(2, 50px);
+  gap: 4px;
+  align-content: start;
+}
+/* Nettbrett og PC: større spillerknapper */
+@media (min-width: 600px) {
+  .reg-players { grid-template-columns: repeat(2, 76px); gap: 6px; }
+  .pbtn { height: 52px; }
+  .pbtn b { font-size: 1.15rem; }
+  .pbtn small { font-size: .7rem; }
+}
+.reg-label {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.reg-label:first-child { margin-top: 0; }
+.reg-note { grid-column: 1 / -1; font-size: .75rem; color: var(--muted); margin: 0; }
+.pbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  min-width: 0;
+  padding: 0 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+.pbtn b { font-size: 1rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pbtn small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .62rem;
+  color: var(--muted);
+}
+.pbtn.keeper { background: #e6ece9; }
+.pbtn[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: #fff; }
+.pbtn[aria-pressed="true"] small { color: rgba(255, 255, 255, .85); }
+.side-them .pbtn[aria-pressed="true"] { background: var(--red); border-color: var(--red); }
+.side-them .pbtn.keeper[aria-pressed="true"] { background: var(--text); border-color: var(--text); }
+
+/* Mål + bane er ca. like høye som de er brede. Bredden begrenses av
+   skjermhøyden, så knappene under alltid er synlige uten scrolling. */
+.reg-field {
+  min-width: 0;
+  width: 100%;
+  max-width: min(540px, calc((100vh - 300px) / 1.04));
+  max-width: min(540px, calc((100dvh - 300px) / 1.04));
+  justify-self: center;
+}
+
+/* Målet: står rett over banen. Lavere enn virkeligheten, så det får plass. */
+.goal {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 74%;
+  aspect-ratio: 3 / 1.55;
+  margin: 0 auto;
+  border: 6px solid var(--text);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 7px, rgba(0,0,0,.05) 7px 8px),
+    repeating-linear-gradient(-45deg, transparent 0 7px, rgba(0,0,0,.05) 7px 8px),
+    var(--surface);
+}
+.zone {
+  border: 1px dashed var(--border);
+  background: transparent;
+  font: inherit;
+  font-size: .9rem;
+  color: var(--green-dark);
+  cursor: pointer;
+  padding: 0;
+}
+.zone:hover { background: rgba(0, 150, 94, .06); }
+.zone[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--green) 25%, transparent);
+  border: 2px solid var(--green);
+}
+.side-them .zone { color: var(--red); }
+.side-them .zone[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--red) 20%, transparent);
+  border-color: var(--red);
+}
+
+/* Banen: halv bane sett fra skytteren */
+.court {
+  display: block;
+  width: 100%;
+  border-radius: 0 0 8px 8px;
+  cursor: crosshair;
+  touch-action: manipulation;
+  user-select: none;
+}
+.court-floor { fill: #dce8e1; }
+.court .area { fill: transparent; transition: fill .12s; }
+.court .area:hover { fill: rgba(255, 255, 255, .35); }
+.court .area.selected { fill: color-mix(in srgb, var(--green) 38%, transparent); }
+.side-them .court .area.selected { fill: color-mix(in srgb, var(--red) 32%, transparent); }
+.court-line { fill: none; stroke: #fff; stroke-width: 1.6; pointer-events: none; }
+.court-line.dashed { stroke-dasharray: 4 3; }
+.court-divider { stroke: rgba(255, 255, 255, .8); stroke-width: .8; stroke-dasharray: 2 2; pointer-events: none; }
+.court-goal-area { fill: #c3d8cb; stroke: #fff; stroke-width: 1.6; pointer-events: none; }
+.court-text {
+  font-size: 8px;
+  font-weight: 600;
+  fill: var(--muted);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.court-dot { fill: var(--text); stroke: #fff; stroke-width: 1.4; pointer-events: none; }
+
+.reg-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 6px;
+  min-height: 32px;
+  font-size: .8rem;
+  font-weight: 600;
+}
+.reg-summary .placeholder { font-weight: 400; color: var(--muted); }
+
+/* Mål | Redning | Utenfor */
+.result-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+.btn-result { min-height: 44px; padding: 0 4px; font-size: .9rem; color: #fff; white-space: normal; line-height: 1.1; }
+.btn-goal { background: var(--green); }
+.side-them .btn-goal { background: var(--red); }
+.btn-save { background: var(--text); }
+.btn-miss { background: var(--surface); color: var(--text); border-color: var(--border); }
+
+.last-shot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 4px 2px 8px;
+  border-top: 1px solid var(--border);
+}
+.last-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .85rem;
+}
+.last-text b { font-variant-numeric: tabular-nums; }
+
+/* Tidslinje */
+.small-left { font-size: .8rem; margin: 4px 0 10px; }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline:empty { display: none; }
+.tl-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.tl-time {
+  border: 0;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  color: var(--text);
+}
+.tl-main { min-width: 0; border-left: 4px solid var(--green); padding-left: 10px; }
+.tl-item.them .tl-main { border-left-color: var(--red); }
+.tl-who { font-weight: 600; font-size: .95rem; }
+.tl-detail { font-size: .8rem; color: var(--muted); }
+.badge {
+  font-size: .75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--bg);
+  color: var(--muted);
+}
+.badge-goal { background: var(--green); color: #fff; }
+.tl-item.them .badge-goal { background: var(--red); }
+.badge-save { background: var(--text); color: #fff; }
+.tl-delete {
+  border: 0;
+  background: none;
+  font-size: 1.2rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.tl-delete:hover { color: var(--red); }
+
+/* ---------- Vinduer (dialog) ---------- */
+dialog {
+  width: min(440px, calc(100% - 32px));
+  border: 0;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+  color: var(--text);
+}
+dialog::backdrop { background: rgba(10, 20, 15, .45); }
+dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
+#ask-dialog h3 { margin-bottom: 8px; }
+#ask-input { margin-bottom: 8px; }
+.menu-list { display: grid; gap: 8px; }
+.form-error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--red-soft);
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* ---------- Menyen ---------- */
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 10;
+  display: flex;
+  height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tab svg {
+  width: 24px; height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tab.active { color: var(--green); }
+
+/* På PC: menyen flyttes opp under toppfeltet */
+@media (min-width: 900px) {
+  body { padding-bottom: 24px; }
+  .tabbar {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    height: auto;
+    padding: 0;
+    justify-content: center;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex: none;
+    flex-direction: row;
+    gap: 8px;
+    padding: 14px 22px;
+    font-size: .95rem;
+    border-bottom: 3px solid transparent;
+  }
+  .tab svg { width: 20px; height: 20px; }
+  .tab.active { border-bottom-color: var(--green); }
+}
+
+/* ---------- Kort beskjed (toast) ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-height) + 16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--text);
+  color: #fff;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+}
+body.in-match .toast { bottom: 16px; }
+@media (min-width: 900px) { .toast { bottom: 24px; } }
