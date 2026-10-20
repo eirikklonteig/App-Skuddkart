@@ -100,6 +100,9 @@
         <button class="mb-btn" id="btn-match-menu" aria-label="Kampmeny">⋯</button>
       </div>
 
+      <!-- Aktive utvisninger med nedtelling -->
+      <div class="susp-strip" id="susp-strip" hidden></div>
+
       <div class="match-grid">
         <!-- Vises når kampen er avsluttet (registreringen er da låst) -->
         <div class="finished-card" id="finished-card" hidden>
@@ -133,6 +136,14 @@
                 <button class="btn btn-result btn-goal" id="btn-goal">Mål</button>
                 <button class="btn btn-result btn-save" id="btn-save">Redning</button>
                 <button class="btn btn-result btn-miss" id="btn-out">Utenfor</button>
+              </div>
+
+              <!-- Hendelser: velg spiller først (ikke for time-out) -->
+              <div class="event-row" id="event-row">
+                <button class="btn btn-event" data-event="yellow"><span class="card-icon yellow"></span>Gult</button>
+                <button class="btn btn-event" data-event="2min">2 min</button>
+                <button class="btn btn-event" data-event="red"><span class="card-icon red"></span>Rødt</button>
+                <button class="btn btn-event" data-event="timeout">Time-out</button>
               </div>
 
               <div class="last-shot">
@@ -219,6 +230,19 @@
           <h3>Per omgang</h3>
           <div class="table-wrap"><table class="stats-table" id="stats-halves"></table></div>
         </div>
+
+        <div class="card">
+          <h3>Over- og undertall</h3>
+          <p class="muted small-left">Ut fra utvisninger (2 min og rødt kort) som pågikk da skuddet ble tatt.</p>
+          <div class="table-wrap"><table class="stats-table" id="stats-strength"></table></div>
+        </div>
+
+        <div class="card">
+          <h3>Kort, utvisninger og time-out</h3>
+          <p class="stats-below" id="stats-timeouts"></p>
+          <div class="table-wrap"><table class="stats-table" id="stats-cards"></table></div>
+          <p class="muted small-left" id="stats-cards-empty">Ingen kort eller utvisninger registrert.</p>
+        </div>
       </div>
     </section>
 
@@ -247,7 +271,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.6</p>
+      <p class="muted small">Skuddkart versjon 0.7</p>
     </section>
   </main>
 

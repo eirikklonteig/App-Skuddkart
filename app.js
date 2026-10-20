@@ -46,6 +46,8 @@ const AREA_7M = { id: '7m', label: '7 m-kast', short: '7 m', distance: '7m', pos
 //            area (sone på banen), pos: { x, y } (meter, for varmekart),
 //            distance, zone (0–8 eller null = utenfor), result: 'goal' | 'save' | 'miss',
 //            half, sec }
+// events:  { id, createdAt, side, type: 'yellow' | '2min' | 'red' | 'timeout',
+//            playerId, oppNumber, half, sec }   (matches.events, kan mangle i eldre kamper)
 
 function newTeam(name) {
   return { id: newId(), name, halfLength: MAX_HALF, players: [], matches: [] };
@@ -550,6 +552,7 @@ function renderClock(match) {
   $('btn-clock').textContent = c.running ? '❚❚' : '▶';
   $('btn-clock').classList.toggle('running', c.running);
   $('btn-clock').setAttribute('aria-label', c.running ? 'Pause klokka' : 'Start klokka');
+  renderSuspensions(match);
 }
 
 $('btn-clock').addEventListener('click', () => {
@@ -730,7 +733,7 @@ function renderPlayerColumn(match) {
   column.append(el('p', 'reg-label', 'Skytter'));
   column.append(playerButton('?', 'ukjent', draft.oppNumber === null, false,
     () => { draft.oppNumber = null; renderShotPanel(match); }));
-  const used = [...new Set(match.shots
+  const used = [...new Set([...match.shots, ...(match.events || [])]
     .filter((s) => s.side === 'them' && s.oppNumber)
     .map((s) => s.oppNumber))];
   if (draft.oppNumber && !used.includes(draft.oppNumber)) used.push(draft.oppNumber);
@@ -976,69 +979,101 @@ function shotWho(match, shot, short) {
 
 const RESULT_WORDS = { goal: 'MÅL', save: 'Redning', miss: 'Utenfor' };
 
+// Alt som skjedde i kampen (skudd og hendelser), sortert etter kamptid.
+function matchItems(match) {
+  return [
+    ...match.shots.map((obj) => ({ kind: 'shot', obj })),
+    ...(match.events || []).map((obj) => ({ kind: 'event', obj }))
+  ].sort((a, b) => shotGameSeconds(match, a.obj) - shotGameSeconds(match, b.obj) ||
+                   a.obj.createdAt - b.obj.createdAt);
+}
+
+// Det som sist ble registrert (for «Siste» og «Angre»).
+function lastItem(match) {
+  const items = matchItems(match);
+  return items.length ? items.reduce((a, b) => (b.obj.createdAt > a.obj.createdAt ? b : a)) : null;
+}
+
+function eventWho(match, ev, short) {
+  if (ev.type === 'timeout') return ev.side === 'us' ? (team().name || 'Vi') : match.opponent;
+  return shotWho(match, ev, short);
+}
+
 function renderLastShot(match) {
   const text = $('last-shot');
   text.replaceChildren();
-  $('btn-undo').disabled = match.shots.length === 0;
-  if (!match.shots.length) {
+  const last = lastItem(match);
+  $('btn-undo').disabled = !last;
+  if (!last) {
     text.textContent = 'Ingen skudd ennå';
     return;
   }
-  const last = match.shots.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
-  text.append(
-    el('b', '', formatClock(shotGameSeconds(match, last)) + ' '),
-    document.createTextNode(
-      `${shotWho(match, last, true)} · ${shotFromText(last, true)} · ${RESULT_WORDS[last.result]}`
-    )
-  );
+  const o = last.obj;
+  const what = last.kind === 'shot'
+    ? `${shotWho(match, o, true)} · ${shotFromText(o, true)} · ${RESULT_WORDS[o.result]}`
+    : `${eventWho(match, o, true)} · ${EVENT_TYPES[o.type].label}`;
+  text.append(el('b', '', formatClock(shotGameSeconds(match, o)) + ' '), document.createTextNode(what));
 }
 
 function renderTimeline(match) {
-  // Sorter etter kamptid, og regn ut stillingen etter hvert mål.
-  const ordered = [...match.shots].sort(
-    (a, b) => shotGameSeconds(match, a) - shotGameSeconds(match, b) || a.createdAt - b.createdAt
-  );
+  const items = matchItems(match);
+
+  // Stillingen etter hvert mål
   const scoreAfter = new Map();
-  ordered.forEach((shot, i) => scoreAfter.set(shot.id, matchScore(match, ordered.slice(0, i + 1))));
+  const shotsSoFar = [];
+  items.forEach(({ kind, obj }) => {
+    if (kind !== 'shot') return;
+    shotsSoFar.push(obj);
+    scoreAfter.set(obj.id, matchScore(match, shotsSoFar));
+  });
 
   const list = $('timeline');
   list.replaceChildren();
-  $('empty-timeline').hidden = ordered.length > 0;
-  $('timeline-hint').hidden = ordered.length === 0;
+  $('empty-timeline').hidden = items.length > 0;
+  $('timeline-hint').hidden = items.length === 0;
 
-  [...ordered].reverse().forEach((shot) => {
-    const item = el('li', 'tl-item ' + shot.side);
+  [...items].reverse().forEach(({ kind, obj }) => {
+    const item = el('li', `tl-item ${obj.side}` + (kind === 'event' ? ' tl-event' : ''));
 
-    const time = el('button', 'tl-time', formatClock(shotGameSeconds(match, shot)));
+    const time = el('button', 'tl-time', formatClock(shotGameSeconds(match, obj)));
     time.type = 'button';
     time.title = 'Rett tiden';
-    time.addEventListener('click', () => editShotTime(shot));
+    time.addEventListener('click', () => editShotTime(obj));
 
-    let detail = `${shotFromText(shot)} · ${zoneName(shot.zone)}`;
-    if (shot.side === 'them' && shot.result === 'save') {
-      const k = getPlayer(shot.keeperId);
-      if (k) detail += ` · ${k.name}`;
-    }
     const main = el('div', 'tl-main');
-    main.append(el('div', 'tl-who', shotWho(match, shot, false)), el('div', 'tl-detail', detail));
-
     let badge;
-    if (shot.result === 'goal') {
-      const s = scoreAfter.get(shot.id);
-      badge = el('span', 'badge badge-goal', `MÅL ${s.us}–${s.them}`);
-    } else if (shot.result === 'save') {
-      badge = el('span', 'badge badge-save', 'Redning');
+    if (kind === 'shot') {
+      let detail = `${shotFromText(obj)} · ${zoneName(obj.zone)}`;
+      if (obj.side === 'them' && obj.result === 'save') {
+        const k = getPlayer(obj.keeperId);
+        if (k) detail += ` · ${k.name}`;
+      }
+      main.append(el('div', 'tl-who', shotWho(match, obj, false)), el('div', 'tl-detail', detail));
+
+      if (obj.result === 'goal') {
+        const s = scoreAfter.get(obj.id);
+        badge = el('span', 'badge badge-goal', `MÅL ${s.us}–${s.them}`);
+      } else if (obj.result === 'save') {
+        badge = el('span', 'badge badge-save', 'Redning');
+      } else {
+        badge = el('span', 'badge', 'Utenfor');
+      }
     } else {
-      badge = el('span', 'badge', 'Utenfor');
+      const type = EVENT_TYPES[obj.type];
+      main.append(el('div', 'tl-who', eventWho(match, obj, false)), el('div', 'tl-detail', type.label));
+      badge = el('span', 'badge ' + type.badge, type.short);
     }
 
     const remove = el('button', 'tl-delete', '×');
     remove.type = 'button';
-    remove.setAttribute('aria-label', 'Slett skuddet');
+    remove.setAttribute('aria-label', kind === 'shot' ? 'Slett skuddet' : 'Slett hendelsen');
     remove.addEventListener('click', async () => {
-      const ok = await ask({ title: 'Slette dette skuddet?', okText: 'Slett', danger: true });
+      const ok = await ask({
+        title: kind === 'shot' ? 'Slette dette skuddet?' : 'Slette denne hendelsen?',
+        okText: 'Slett', danger: true
+      });
       if (!ok) return;
-      match.shots = match.shots.filter((s) => s.id !== shot.id);
+      removeItem(match, obj.id);
       saveData();
       renderMatch();
     });
@@ -1048,11 +1083,17 @@ function renderTimeline(match) {
   });
 }
 
+function removeItem(match, id) {
+  match.shots = match.shots.filter((s) => s.id !== id);
+  match.events = (match.events || []).filter((e) => e.id !== id);
+}
+
+// Retter tiden på et skudd eller en hendelse (begge har half og sec).
 async function editShotTime(shot) {
   const match = currentMatch();
   const halfSec = match.halfLength * 60;
   const answer = await ask({
-    title: 'Når kom skuddet?',
+    title: 'Når skjedde det?',
     message: `Skriv kamptid som mm:ss. 2. omgang starter på ${formatClock(halfSec)}.`,
     okText: 'Lagre',
     input: { value: formatClock(shotGameSeconds(match, shot)), inputMode: 'numeric' }
@@ -1079,13 +1120,81 @@ async function editShotTime(shot) {
 
 $('btn-undo').addEventListener('click', () => {
   const match = currentMatch();
-  if (!match.shots.length) return;
-  const last = match.shots.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
-  match.shots = match.shots.filter((s) => s.id !== last.id);
+  const last = lastItem(match);
+  if (!last) return;
+  removeItem(match, last.obj.id);
   saveData();
   renderMatch();
-  showToast('Siste skudd er angret');
+  showToast(last.kind === 'shot' ? 'Siste skudd er angret' : `${EVENT_TYPES[last.obj.type].label} er angret`);
 });
+
+// ---------- Hendelser: kort, utvisning og time-out ----------
+
+const EVENT_TYPES = {
+  yellow:  { label: 'Gult kort',  short: 'Gult',     badge: 'badge-yellow' },
+  '2min':  { label: '2 minutter', short: '2 min',    badge: 'badge-2min', suspends: true },
+  red:     { label: 'Rødt kort',  short: 'Rødt',     badge: 'badge-red', suspends: true },
+  timeout: { label: 'Time-out',   short: 'Time-out', badge: 'badge-timeout' }
+};
+const SUSPENSION_SEC = 120;   // en utvisning varer 2 minutter kamptid
+
+function registerEvent(type) {
+  const match = currentMatch();
+  if (match.finished) return showToast('Kampen er avsluttet. Gjenåpne den i menyen ⋯');
+  const needsPlayer = type !== 'timeout';
+  if (needsPlayer && draft.side === 'us' && !draft.playerId) {
+    return showToast('Velg spilleren først, og trykk så på knappen');
+  }
+
+  const ev = {
+    id: newId(),
+    createdAt: Date.now(),
+    side: draft.side,
+    type,
+    playerId: needsPlayer && draft.side === 'us' ? draft.playerId : null,
+    oppNumber: needsPlayer && draft.side === 'them' ? draft.oppNumber : null,
+    half: match.clock.half,
+    sec: Math.floor(clockMs(match) / 1000)
+  };
+  if (!match.events) match.events = [];
+  match.events.push(ev);
+  saveData();
+
+  showToast(`${EVENT_TYPES[type].label}: ${eventWho(match, ev, false)}`);
+  draft = newDraft(draft.side);
+  renderMatch();
+}
+
+document.querySelectorAll('.btn-event').forEach((button) => {
+  button.addEventListener('click', () => registerEvent(button.dataset.event));
+});
+
+// Utvisninger som pågår ved et gitt tidspunkt (sekunder kamptid).
+// registeredBefore: skjer noe i samme sekund, teller bare utvisninger
+// som ble registrert før (for eksempel skudd rett før et rødt kort).
+function activeSuspensions(match, atSecond, registeredBefore) {
+  return (match.events || []).filter((ev) => {
+    if (!EVENT_TYPES[ev.type] || !EVENT_TYPES[ev.type].suspends) return false;
+    const start = shotGameSeconds(match, ev);
+    if (start === atSecond && registeredBefore && ev.createdAt > registeredBefore) return false;
+    return atSecond >= start && atSecond < start + SUSPENSION_SEC;
+  });
+}
+
+// Viser pågående utvisninger med nedtelling. Kalles hver gang klokka oppdateres.
+function renderSuspensions(match) {
+  const strip = $('susp-strip');
+  const now = gameSeconds(match, match.clock.half, Math.floor(clockMs(match) / 1000));
+  const active = match.finished ? [] : activeSuspensions(match, now);
+  strip.hidden = active.length === 0;
+  strip.replaceChildren();
+  active.forEach((ev) => {
+    const left = shotGameSeconds(match, ev) + SUSPENSION_SEC - now;
+    const teamName = ev.side === 'us' ? (team().name || 'Vi') : match.opponent;
+    const who = ev.side === 'us' ? shotWho(match, ev, true) : (ev.oppNumber ? `#${ev.oppNumber}` : 'ukjent');
+    strip.append(el('span', 'susp ' + ev.side, `${teamName} −1 · ${who} · ${formatClock(left)}`));
+  });
+}
 
 // =========================================================
 // STATISTIKK
@@ -1202,6 +1311,8 @@ function renderStats() {
   renderStatsGoal(shots);
   renderStatsCourt(shots);
   renderStatsTables(shots);
+  renderStatsStrength(shots);
+  renderStatsCards(matches);
 }
 
 // ---------- Nøkkeltall ----------
@@ -1423,6 +1534,71 @@ function renderStatsTables(shots) {
     isUs ? ['Omgang', 'Skudd', 'Mål', 'Effekt.'] : ['Omgang', 'Skudd', 'Mål imot', 'Redn.', 'Redn. %'],
     [halfRow('1. omgang', halves[0]), halfRow('2. omgang', halves[1])],
     halfRow('Totalt', total));
+}
+
+// ---------- Over- og undertall ----------
+
+// Var vi i overtall, likt eller undertall da skuddet ble tatt?
+function strengthAt(shot) {
+  const active = activeSuspensions(shot.match, shotGameSeconds(shot.match, shot), shot.createdAt);
+  const ours = active.filter((ev) => ev.side === 'us').length;
+  const theirs = active.filter((ev) => ev.side === 'them').length;
+  if (theirs > ours) return 'over';
+  if (ours > theirs) return 'under';
+  return 'equal';
+}
+
+function renderStatsStrength(shots) {
+  const isUs = statsSide === 'us';
+  const byState = groupBy(shots, strengthAt);
+  const rows = [['over', 'Vi i overtall'], ['equal', 'Likt antall'], ['under', 'Vi i undertall']]
+    .map(([state, label]) => {
+      const t = tally(byState.get(state) || []);
+      return isUs
+        ? [label, t.shots, t.goals, pct(t.goals, t.shots)]
+        : [label, t.shots, t.goals, t.saves, pct(t.saves, t.onTarget)];
+    });
+  fillTable($('stats-strength'),
+    isUs ? ['Situasjon', 'Skudd', 'Mål', 'Effekt.'] : ['Situasjon', 'Skudd', 'Mål imot', 'Redn.', 'Redn. %'],
+    rows);
+}
+
+// ---------- Kort, utvisninger og time-out ----------
+
+function renderStatsCards(matches) {
+  const isUs = statsSide === 'us';
+  const allMatches = statsMatchId === 'all';
+  const events = matches.flatMap((m) => (m.events || []).map((ev) => ({ ...ev, match: m })));
+
+  const timeouts = events.filter((ev) => ev.type === 'timeout');
+  const ourTimeouts = timeouts.filter((ev) => ev.side === 'us').length;
+  const theirLabel = allMatches ? 'Motstanderne' : (matches[0] ? matches[0].opponent : 'Motstander');
+  $('stats-timeouts').replaceChildren(
+    document.createTextNode('Time-out: '),
+    el('b', '', `${team().name || 'Vi'} ${ourTimeouts}`),
+    document.createTextNode(' · '),
+    el('b', '', `${theirLabel} ${timeouts.length - ourTimeouts}`)
+  );
+
+  // Kort og utvisninger for laget som vises (våre spillere, eller motstanderens)
+  const cards = events.filter((ev) => ev.type !== 'timeout' && ev.side === statsSide);
+  const keyOf = (ev) => (isUs
+    ? ev.playerId
+    : (allMatches ? ev.match.opponent + ' ' : '') + (ev.oppNumber ? '#' + ev.oppNumber : 'Ukjent'));
+  const nameOf = (key) => {
+    if (!isUs) return key;
+    const p = getPlayer(key);
+    return p ? `#${p.number} ${p.name}` : 'Slettet spiller';
+  };
+  const count = (list, type) => list.filter((ev) => ev.type === type).length;
+
+  const rows = [...groupBy(cards, keyOf).entries()]
+    .map(([key, list]) => [nameOf(key), count(list, 'yellow'), count(list, '2min'), count(list, 'red')])
+    .sort((a, b) => b[2] - a[2] || b[1] - a[1]);
+  $('stats-cards-empty').hidden = rows.length > 0;
+  $('stats-cards').hidden = rows.length === 0;
+  fillTable($('stats-cards'), [isUs ? 'Spiller' : 'Skytter', 'Gult', '2 min', 'Rødt'], rows,
+    rows.length ? ['Totalt', count(cards, 'yellow'), count(cards, '2min'), count(cards, 'red')] : null);
 }
 
 // =========================================================

@@ -682,6 +682,47 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   .tab.active { border-bottom-color: var(--green); }
 }
 
+/* ---------- Hendelser: kort, utvisning, time-out ---------- */
+.event-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+}
+.btn-event {
+  min-height: 36px;
+  padding: 0 4px;
+  gap: 4px;
+  font-size: .78rem;
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-event:hover { border-color: var(--muted); }
+.card-icon { display: inline-block; flex: none; width: 9px; height: 12px; border-radius: 2px; }
+.card-icon.yellow { background: #f2c200; }
+.card-icon.red { background: var(--red); }
+
+/* Aktive utvisninger under resultatlinja */
+.susp-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.susp {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+.susp.them { background: var(--red-soft); color: var(--red); }
+
+/* Hendelser i tidslinjen */
+.tl-event .tl-main { border-left-style: dashed; }
+.badge-yellow { background: #fdf0c2; color: #6b5200; }
+.badge-2min { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--text); }
+.badge-red { background: var(--red-soft); color: var(--red); }
+.badge-timeout { background: #e3ecf7; color: #24456b; }
+
 /* ---------- Avsluttet kamp ---------- */
 .finished-card {
   background: var(--surface);

@@ -15,11 +15,13 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - [x] Steg 4: Statistikk (redningsprosent, skuddkart, per spiller, per sone, per omgang)
       + «Avslutt kamp» i ⋯-menyen: stopper klokka, markerer kampen som ferdig,
       låser registreringen, åpner kampens statistikk. «Gjenåpne kamp» for rettinger.
-- [ ] Steg 5: Hendelser – 2 minutter, gult kort (evt. rødt/blått) og time-out, med tid.
+- [x] Steg 5: Hendelser – 2 minutter, gult kort (evt. rødt/blått) og time-out, med tid.
       Bør være på plass før ekte seriekamper føres (gir statistikk i over-/undertall
       og før/etter time-out).
 
 ## Senere
+- **Før og etter time-out:** effektivitet i minuttene før og etter hver time-out
+- **Blått kort** (rapport etter rødt kort), hvis det trengs
 - **Varmekart over banen:** se hvor skuddene kommer fra, og hvordan det endrer seg med hvem som er på banen
 - **Type angrep:** kontring, gjennombrudd, vanlig angrep (valgfritt ekstra trykk)
 - **Flere lag i samme klubb:** velge/bytte lag i appen (lagringen er allerede klar for dette)
