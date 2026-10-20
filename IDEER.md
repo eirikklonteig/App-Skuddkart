@@ -22,6 +22,12 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - [x] Steg 6: Flere lag – lagliste, nytt lag (med kopiering av spillere), bytte lag
       fra toppfeltet, slette lag. Spillere, kamper og statistikk følger valgt lag.
 
+## Neste gang
+- **Arkivere lag:** skjule gamle lag (f.eks. forrige sesong) fra listen uten å slette
+  kamper og statistikk, med mulighet for å hente dem fram igjen.
+- **Sletting av lag:** gjøre knappen lettere å finne (i dag nederst på «Lag»-siden,
+  og bare synlig når det finnes minst to lag).
+
 ## Senere
 - **Før og etter time-out:** effektivitet i minuttene før og etter hver time-out
 - **Blått kort** (rapport etter rødt kort), hvis det trengs
