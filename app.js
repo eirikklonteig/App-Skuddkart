@@ -187,14 +187,20 @@ function firstName(name) {
 // så appen har sitt eget vindu. Svaret kommer tilbake som et løfte (Promise):
 //   bekreftelse → true eller null,  tekstspørsmål → teksten eller null.
 
+//   Med half: 1 eller 2 vises også et valg av omgang, og svaret blir
+//   { text, half } eller null.
+
 let askResolve = null;
 
-function ask({ title, message = '', okText = 'OK', danger = false, input = null }) {
+function ask({ title, message = '', okText = 'OK', danger = false, input = null, half = null }) {
   $('ask-title').textContent = title;
   $('ask-message').textContent = message;
   $('ask-message').hidden = !message;
   $('ask-ok').textContent = okText;
   $('ask-ok').className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+
+  $('ask-half').hidden = !half;
+  if (half) $('ask-half').querySelector(`input[value="${half}"]`).checked = true;
 
   const field = $('ask-input');
   field.hidden = !input;
@@ -218,10 +224,15 @@ function closeAsk(answer) {
 
 $('ask-form').addEventListener('submit', (event) => {
   event.preventDefault();
-  closeAsk($('ask-input').hidden ? true : $('ask-input').value);
+  if ($('ask-input').hidden) return closeAsk(true);
+  const text = $('ask-input').value;
+  if ($('ask-half').hidden) return closeAsk(text);
+  closeAsk({ text, half: Number($('ask-half').querySelector('input:checked').value) });
 });
 $('ask-cancel').addEventListener('click', () => closeAsk(null));
-$('ask-dialog').addEventListener('close', () => closeAsk(null));   // Esc-tasten
+$('ask-dialog').addEventListener('close', () => {   // Esc-tasten
+  if (!$('ask-dialog').open) closeAsk(null);
+});
 
 // ---------- Navigasjon mellom sidene ----------
 
@@ -262,18 +273,32 @@ function renderTeam() {
   $('team-heading').textContent = teamName();
   $('input-team-name').value = team().name;
   $('input-team-half').value = team().halfLength;
-  $('btn-delete-team').hidden = data.teams.length < 2;
+  const archived = !!team().archived;
+  $('btn-archive-team').textContent = archived ? 'Hent fram laget' : 'Arkiver laget';
+  $('team-admin-text').textContent = archived
+    ? 'Laget er arkivert. Kampene og statistikken er tatt vare på. Hent det fram for å bruke det igjen.'
+    : 'Arkiver laget når sesongen er over. Kampene og statistikken blir tatt vare på, og laget kan hentes fram igjen.';
 }
 
 // Listen over alle lag øverst på «Lag»-siden
 function renderTeamList() {
-  const list = $('team-list');
+  const activeTeams = sortedTeams().filter((t) => !t.archived);
+  const archivedTeams = sortedTeams().filter((t) => t.archived);
+  fillTeamRows($('team-list'), activeTeams);
+  fillTeamRows($('archived-list'), archivedTeams);
+  $('archived-teams').hidden = archivedTeams.length === 0;
+  $('archived-summary').textContent = `Arkiverte lag (${archivedTeams.length})`;
+  if (team().archived) $('archived-teams').open = true;
+}
+
+function fillTeamRows(list, teams) {
   list.replaceChildren();
-  sortedTeams().forEach((t) => {
+  teams.forEach((t) => {
     const active = t.id === team().id;
     const row = el('button', 'match-row team-row' + (active ? ' active' : ''));
     row.type = 'button';
     const meta = el('span', 'match-date', `${t.players.length} spillere · ${t.matches.length} kamper`);
+    if (t.archived) meta.append(el('span', 'status status-archived', 'Arkivert'));
     if (active) meta.append(el('span', 'status status-done', 'Valgt'));
     row.append(meta, el('span', 'match-score', active ? '✓' : '›'), el('span', 'match-title', teamName(t)));
     row.addEventListener('click', () => selectTeam(t.id));
@@ -282,6 +307,33 @@ function renderTeamList() {
     list.append(item);
   });
 }
+
+// ---------- Arkivere lag ----------
+
+$('btn-archive-team').addEventListener('click', async () => {
+  const t = team();
+  if (t.archived) {
+    t.archived = false;
+    saveData();
+    renderAll();
+    showToast(`${teamName(t)} er hentet fram`);
+    return;
+  }
+  const ok = await ask({
+    title: `Arkivere ${teamName(t)}?`,
+    message: 'Laget flyttes til «Arkiverte lag». Ingenting slettes, og du kan hente det fram igjen.',
+    okText: 'Arkiver'
+  });
+  if (!ok) return;
+  t.archived = true;
+  // Bytt til et annet aktivt lag hvis det finnes
+  const next = sortedTeams().find((x) => !x.archived);
+  if (next) data.activeTeamId = next.id;
+  saveData();
+  statsMatchId = 'all';
+  renderAll();
+  showToast(`${teamName(t)} er arkivert`);
+});
 
 function selectTeam(id) {
   if (id === team().id) return;
@@ -310,7 +362,9 @@ $('btn-new-team').addEventListener('click', () => {
   const copyFrom = $('input-copy-from');
   copyFrom.replaceChildren(new Option('Ingen – start med tom spillerliste', ''));
   sortedTeams().forEach((t) => {
-    if (t.players.length) copyFrom.append(new Option(`${teamName(t)} (${t.players.length} spillere)`, t.id));
+    if (t.players.length) {
+      copyFrom.append(new Option(`${teamName(t)} (${t.players.length} spillere)` + (t.archived ? ' – arkivert' : ''), t.id));
+    }
   });
   $('team-error').hidden = true;
   $('team-dialog').showModal();
@@ -348,7 +402,6 @@ $('team-form').addEventListener('submit', (event) => {
 // ---------- Slett lag ----------
 
 $('btn-delete-team').addEventListener('click', async () => {
-  if (data.teams.length < 2) return;
   const t = team();
   const ok = await ask({
     title: `Slette ${teamName(t)}?`,
@@ -357,7 +410,9 @@ $('btn-delete-team').addEventListener('click', async () => {
   });
   if (!ok) return;
   data.teams = data.teams.filter((x) => x.id !== t.id);
-  data.activeTeamId = sortedTeams()[0].id;
+  // Appen trenger minst ett lag. Var dette det siste, lages et tomt lag.
+  if (!data.teams.length) data.teams.push(newTeam('Mitt lag'));
+  data.activeTeamId = (sortedTeams().find((x) => !x.archived) || sortedTeams()[0]).id;
   saveData();
   statsMatchId = 'all';
   renderAll();
@@ -369,7 +424,7 @@ $('btn-delete-team').addEventListener('click', async () => {
 $('btn-team-switch').addEventListener('click', () => {
   const list = $('team-switch-list');
   list.replaceChildren();
-  sortedTeams().forEach((t) => {
+  sortedTeams().filter((t) => !t.archived || t.id === team().id).forEach((t) => {
     const active = t.id === team().id;
     const button = el('button', 'btn btn-secondary' + (active ? ' active' : ''));
     button.type = 'button';
@@ -434,8 +489,12 @@ const playerDialog = $('player-dialog');
 const playerForm = $('player-form');
 let editingPlayerId = null;   // null = ny spiller
 
-function openPlayerDialog(player) {
+// fromMatch: spilleren legges også rett inn i troppen til kampen som er åpen.
+let addPlayerToMatch = false;
+
+function openPlayerDialog(player, fromMatch) {
   editingPlayerId = player ? player.id : null;
+  addPlayerToMatch = !!fromMatch;
   $('player-dialog-title').textContent = player ? 'Endre spiller' : 'Ny spiller';
   $('input-number').value = player ? player.number : '';
   $('input-name').value = player ? player.name : '';
@@ -473,16 +532,26 @@ playerForm.addEventListener('submit', (event) => {
     Object.assign(getPlayer(editingPlayerId), { number, name, role });
     showToast(`${name} er oppdatert`);
   } else {
-    team().players.push({ id: newId(), number, name, role });
+    const player = { id: newId(), number, name, role };
+    team().players.push(player);
+    const match = addPlayerToMatch ? currentMatch() : null;
+    if (match && match.squad) match.squad.push(player.id);
     showToast(`${name} er lagt til`);
   }
 
   saveData();
   renderPlayers();
   playerDialog.close();
+  if (addPlayerToMatch && currentMatch()) renderMatch();
 });
 
 $('btn-add-player').addEventListener('click', () => openPlayerDialog(null));
+
+$('input-number').addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  $('input-name').focus();
+});
 $('btn-cancel-player').addEventListener('click', () => playerDialog.close());
 
 $('btn-delete-player').addEventListener('click', async () => {
@@ -559,6 +628,7 @@ $('btn-new-match').addEventListener('click', () => {
   $('input-date').value = todayIso();
   $('input-match-half').value = team().halfLength;
   $('match-error').hidden = true;
+  fillSquadList('new-squad', defaultSquad());
   matchDialog.showModal();
   $('input-opponent').focus();
 });
@@ -575,7 +645,8 @@ matchForm.addEventListener('submit', (event) => {
     return;
   }
 
-  const firstKeeper = sortedPlayers().find((p) => p.role === 'keeper');
+  const squad = readSquad('new-squad');
+  const firstKeeper = sortedPlayers().find((p) => p.role === 'keeper' && squad.includes(p.id));
   const match = {
     id: newId(),
     createdAt: Date.now(),
@@ -585,7 +656,9 @@ matchForm.addEventListener('submit', (event) => {
     halfLength: clampHalf($('input-match-half').value),
     keeperId: firstKeeper ? firstKeeper.id : null,
     clock: { half: 1, elapsedMs: 0, running: false, startedAt: null },
-    shots: []
+    squad,
+    shots: [],
+    events: []
   };
   team().matches.push(match);
   saveData();
@@ -660,9 +733,16 @@ function clockMs(match) {
   return Math.min(ms, halfMs(match));
 }
 
-// Kamptid i sekunder fra kampstart (2. omgang fortsetter der 1. slapp).
+// Kamptid i sekunder fra kampstart. Brukes bare til å sortere og regne
+// (for eksempel utvisninger som varer inn i 2. omgang). Klokka som vises,
+// starter på 00:00 i hver omgang.
 function gameSeconds(match, half, sec) {
   return (half - 1) * match.halfLength * 60 + sec;
+}
+
+// Tid som tekst, for eksempel «12:34 (2.)»
+function timeText(item) {
+  return `${formatClock(item.sec)} (${item.half}.)`;
 }
 
 function pauseClock(match) {
@@ -671,36 +751,94 @@ function pauseClock(match) {
   match.clock.startedAt = null;
 }
 
+function startClock(match) {
+  match.clock.running = true;
+  match.clock.startedAt = Date.now();
+}
+
+// Time-out: kampklokka står, og ett minutt telles ned i sanntid.
+const TIMEOUT_MS = 60 * 1000;
+
+function timeoutLeftMs(match) {
+  return match.timeout ? Math.max(0, match.timeout.endsAt - Date.now()) : 0;
+}
+
 function renderClock(match) {
   const c = match.clock;
   const sec = Math.floor(clockMs(match) / 1000);
-  const ended = clockMs(match) >= halfMs(match);
+  const timeUp = clockMs(match) >= halfMs(match);
 
-  $('clock-time').textContent = formatClock(gameSeconds(match, c.half, sec));
-  $('clock-time').classList.toggle('ended', ended);
-  $('clock-half').textContent = `${c.half}. omg · ${match.halfLength} min`;
+  $('clock-time').textContent = formatClock(sec);
+  $('clock-time').classList.toggle('ended', timeUp || !!c.halfEnded);
+  $('clock-half').textContent = c.halfEnded
+    ? (c.half === 1 ? 'Pause' : 'Slutt')
+    : `${c.half}. omg · ${match.halfLength} min`;
   $('btn-clock').textContent = c.running ? '❚❚' : '▶';
   $('btn-clock').classList.toggle('running', c.running);
   $('btn-clock').setAttribute('aria-label', c.running ? 'Pause klokka' : 'Start klokka');
   renderSuspensions(match);
 }
 
-$('btn-clock').addEventListener('click', () => {
+$('btn-clock').addEventListener('click', async () => {
   const match = currentMatch();
   if (match.finished) return;
   const c = match.clock;
-  if (c.running) {
+
+  if (match.timeout) {
+    // ▶ under eller etter time-out: kampen settes i gang igjen
+    match.timeout = null;
+  } else if (c.running) {
     pauseClock(match);
-  } else {
-    if (clockMs(match) >= halfMs(match)) {
-      return showToast(c.half === 1 ? 'Omgangen er ferdig. Start 2. omgang i menyen ⋯' : 'Kampen er ferdig.');
-    }
-    c.running = true;
-    c.startedAt = Date.now();
+    saveData();
+    return renderClock(match);
   }
+
+  if (c.halfEnded) {
+    if (c.half === 2) return showToast('Kampen er ferdig. Avslutt kampen i menyen ⋯');
+    return startSecondHalf(match);
+  }
+  if (clockMs(match) >= halfMs(match)) {
+    return showToast(`Tiden er ute. Avslutt ${c.half}. omgang i menyen ⋯`);
+  }
+  startClock(match);
   saveData();
   renderClock(match);
 });
+
+// Trykk på klokka for å stille den (for eksempel etter hallens klokke).
+$('btn-set-clock').addEventListener('click', async () => {
+  const match = currentMatch();
+  if (match.finished || match.clock.halfEnded) return;
+  const answer = await ask({
+    title: 'Still klokka',
+    message: `Skriv tiden i ${match.clock.half}. omgang som mm:ss (maks ${formatClock(match.halfLength * 60)}).`,
+    okText: 'Still klokka',
+    input: { value: formatClock(Math.floor(clockMs(match) / 1000)), inputMode: 'numeric' }
+  });
+  if (answer === null) return;
+  const sec = parseClock(answer, match);
+  if (sec === null) return;
+  match.clock.elapsedMs = sec * 1000;
+  if (match.clock.running) match.clock.startedAt = Date.now();
+  saveData();
+  renderClock(match);
+  showToast(`Klokka er stilt til ${formatClock(sec)}`);
+});
+
+// Leser «mm:ss» (eller «mm.ss») og sjekker at det er innenfor en omgang.
+function parseClock(text, match) {
+  const parts = String(text).trim().match(/^(\d{1,2})[:.,]([0-5]\d)$/);
+  if (!parts) {
+    showToast('Skriv tiden som mm:ss, f.eks. 14:20');
+    return null;
+  }
+  const sec = Number(parts[1]) * 60 + Number(parts[2]);
+  if (sec > match.halfLength * 60) {
+    showToast(`En omgang er bare ${match.halfLength} minutter`);
+    return null;
+  }
+  return sec;
+}
 
 // Klokka oppdateres fire ganger i sekundet mens kampen vises.
 setInterval(() => {
@@ -710,18 +848,80 @@ setInterval(() => {
   if (match.clock.running && clockMs(match) >= halfMs(match)) {
     pauseClock(match);
     saveData();
-    showToast(match.clock.half === 1 ? 'Pause! 1. omgang er ferdig.' : 'Kampen er ferdig!');
+    showToast(`Tiden er ute. Avslutt ${match.clock.half === 1 ? '1. omgang' : 'kampen'} i menyen ⋯ når du er klar.`);
+  }
+  if (match.timeout && !match.timeout.done && timeoutLeftMs(match) === 0) {
+    match.timeout.done = true;
+    saveData();
+    showToast('Time-out er ferdig. Trykk ▶ når kampen starter igjen.');
   }
   renderClock(match);
 }, 250);
+
+// ---------- Omganger ----------
+
+function addHalfEnd(match, half) {
+  if (!match.events) match.events = [];
+  match.events = match.events.filter((ev) => !(ev.type === 'halfend' && ev.half === half));
+  match.events.push({
+    id: newId(), createdAt: Date.now(), side: 'none', type: 'halfend',
+    half, sec: Math.floor(clockMs(match) / 1000)
+  });
+}
+
+function removeHalfEnd(match, half) {
+  match.events = (match.events || []).filter((ev) => !(ev.type === 'halfend' && ev.half === half));
+}
+
+async function endFirstHalf(match) {
+  const ok = await ask({
+    title: 'Avslutte 1. omgang?',
+    message: 'Klokka stoppes og «Slutt 1. omgang» legges i tidslinjen. ' +
+             'Du kan fortsatt rette og registrere før du starter 2. omgang.',
+    okText: 'Avslutt 1. omgang'
+  });
+  if (!ok) return;
+  pauseClock(match);
+  match.timeout = null;
+  match.clock.halfEnded = true;
+  match.clock.firstHalfMs = match.clock.elapsedMs;
+  addHalfEnd(match, 1);
+  saveData();
+  renderMatch();
+  showToast('Pause. Trykk ▶ når 2. omgang starter.');
+}
+
+async function startSecondHalf(match) {
+  const ok = await ask({
+    title: 'Starte 2. omgang?',
+    message: 'Klokka starter på 00:00.',
+    okText: 'Start 2. omgang'
+  });
+  if (!ok) return;
+  const c = match.clock;
+  c.half = 2;
+  c.elapsedMs = 0;
+  c.halfEnded = false;
+  startClock(match);
+  saveData();
+  renderMatch();
+}
 
 // ---------- Kampmeny (statistikk, omgang, avslutt, slett) ----------
 
 $('btn-match-menu').addEventListener('click', () => {
   const match = currentMatch();
+  const c = match.clock;
   $('menu-title').textContent = matchTitle(match);
-  $('btn-half').textContent = match.clock.half === 1 ? 'Start 2. omgang' : 'Tilbake til 1. omgang';
+
+  let halfText = '';
+  if (c.half === 1 && !c.halfEnded) halfText = 'Avslutt 1. omgang';
+  else if (c.half === 1) halfText = 'Start 2. omgang';
+  else halfText = 'Tilbake til 1. omgang';
+  $('btn-half').textContent = halfText;
   $('btn-half').hidden = !!match.finished;
+  $('btn-reopen-half').hidden = !!match.finished || !(c.half === 1 && c.halfEnded);
+  $('btn-squad').hidden = !!match.finished;
   $('btn-finish').textContent = match.finished ? 'Gjenåpne kamp' : 'Avslutt kamp';
   $('match-menu').showModal();
 });
@@ -741,6 +941,8 @@ $('btn-finish').addEventListener('click', async () => {
 
   if (match.finished) {
     match.finished = false;
+    removeHalfEnd(match, 2);
+    match.clock.halfEnded = false;
     saveData();
     renderMatch();
     showToast('Kampen er åpnet igjen');
@@ -756,28 +958,49 @@ $('btn-finish').addEventListener('click', async () => {
   });
   if (!ok) return;
   pauseClock(match);
+  match.timeout = null;
+  if (match.clock.half === 2) {
+    addHalfEnd(match, 2);
+    match.clock.halfEnded = true;
+  }
   match.finished = true;
   match.finishedAt = Date.now();
   saveData();
   renderMatch();
   openStats(match.id);
+  offerBackup();
 });
 
 $('btn-half').addEventListener('click', async () => {
   $('match-menu').close();
   const match = currentMatch();
   const c = match.clock;
-  const toSecond = c.half === 1;
-  const ok = await ask(toSecond
-    ? { title: 'Starte 2. omgang?', message: 'Klokka settes til starten av 2. omgang.', okText: 'Start 2. omgang' }
-    : { title: 'Tilbake til 1. omgang?', message: 'Klokka settes til slutten av 1. omgang.', okText: 'Gå tilbake' });
+  if (c.half === 1 && !c.halfEnded) return endFirstHalf(match);
+  if (c.half === 1) return startSecondHalf(match);
+
+  const ok = await ask({
+    title: 'Tilbake til 1. omgang?',
+    message: 'Klokka settes tilbake til pausen etter 1. omgang. Bruk dette bare hvis 2. omgang ble startet ved en feil.',
+    okText: 'Gå tilbake'
+  });
   if (!ok) return;
-  c.half = toSecond ? 2 : 1;
-  c.elapsedMs = toSecond ? 0 : halfMs(match);
+  c.half = 1;
+  c.elapsedMs = c.firstHalfMs || halfMs(match);
+  c.halfEnded = true;
   c.running = false;
   c.startedAt = null;
   saveData();
-  renderClock(match);
+  renderMatch();
+});
+
+$('btn-reopen-half').addEventListener('click', () => {
+  $('match-menu').close();
+  const match = currentMatch();
+  match.clock.halfEnded = false;
+  removeHalfEnd(match, 1);
+  saveData();
+  renderMatch();
+  showToast('1. omgang er åpnet igjen');
 });
 
 $('btn-delete-match').addEventListener('click', async () => {
@@ -832,10 +1055,85 @@ function renderShotPanel(match) {
 }
 
 // Kolonnen til venstre: våre spillere, eller motstanderens numre + vår keeper.
+// ---------- Kamptropp ----------
+//
+// match.squad er en liste med spiller-id-er. Mangler den (eldre kamper),
+// er alle lagets spillere med.
+
+function squadPlayers(match) {
+  return sortedPlayers().filter((p) => !match.squad || match.squad.includes(p.id));
+}
+
+// Troppen fra lagets forrige kamp, eller alle spillerne hvis det ikke finnes noen.
+function defaultSquad() {
+  const last = [...team().matches].sort((a, b) => b.createdAt - a.createdAt)[0];
+  const ids = team().players.map((p) => p.id);
+  if (!last || !last.squad) return ids;
+  return ids.filter((id) => last.squad.includes(id));
+}
+
+function fillSquadList(listId, selectedIds) {
+  const list = $(listId);
+  list.replaceChildren();
+  const players = sortedPlayers().sort((a, b) => (a.role === 'keeper') - (b.role === 'keeper'));
+  if (!players.length) list.append(el('p', 'reg-note', 'Laget har ingen spillere ennå.'));
+  players.forEach((p) => {
+    const row = el('label', 'squad-row' + (p.role === 'keeper' ? ' keeper' : ''));
+    const box = el('input');
+    box.type = 'checkbox';
+    box.value = p.id;
+    box.checked = selectedIds.includes(p.id);
+    box.addEventListener('change', () => updateSquadCount(listId));
+    row.append(box, el('b', '', p.number), el('span', '', p.name));
+    list.append(row);
+  });
+  updateSquadCount(listId);
+}
+
+function readSquad(listId) {
+  return [...$(listId).querySelectorAll('input:checked')].map((box) => box.value);
+}
+
+function updateSquadCount(listId) {
+  const total = $(listId).querySelectorAll('input').length;
+  $(listId + '-count').textContent = '(' + readSquad(listId).length + ' av ' + total + ')';
+}
+
+document.querySelectorAll('[data-squad-all], [data-squad-none]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const listId = button.dataset.squadAll || button.dataset.squadNone;
+    $(listId).querySelectorAll('input').forEach((box) => { box.checked = !!button.dataset.squadAll; });
+    updateSquadCount(listId);
+  });
+});
+
+$('btn-squad').addEventListener('click', () => {
+  $('match-menu').close();
+  const match = currentMatch();
+  fillSquadList('edit-squad', match.squad || team().players.map((p) => p.id));
+  $('squad-dialog').showModal();
+});
+
+$('btn-cancel-squad').addEventListener('click', () => $('squad-dialog').close());
+
+$('squad-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const match = currentMatch();
+  match.squad = readSquad('edit-squad');
+  if (match.keeperId && !match.squad.includes(match.keeperId)) {
+    const keeper = squadPlayers(match).find((p) => p.role === 'keeper');
+    match.keeperId = keeper ? keeper.id : null;
+  }
+  saveData();
+  $('squad-dialog').close();
+  renderMatch();
+  showToast('Kamptropp: ' + match.squad.length + ' spillere');
+});
+
 function renderPlayerColumn(match) {
   const column = $('reg-players');
   column.replaceChildren();
-  const players = sortedPlayers();
+  const players = squadPlayers(match);
   const keepers = players.filter((p) => p.role === 'keeper');
 
   if (draft.side === 'us') {
@@ -848,6 +1146,10 @@ function renderPlayerColumn(match) {
       column.append(playerButton(p.number, firstName(p.name), draft.playerId === p.id, p.role === 'keeper',
         () => { draft.playerId = p.id; renderShotPanel(match); }));
     });
+    // «+»: ny spiller midt i kampen, legges rett inn i troppen
+    const add = playerButton('+', 'spiller', false, false, () => openPlayerDialog(null, true));
+    add.classList.add('add');
+    column.append(add);
     return;
   }
 
@@ -1119,13 +1421,19 @@ function matchItems(match) {
 }
 
 // Det som sist ble registrert (for «Siste» og «Angre»).
+// «Slutt omgang» angres ikke her, men med «Gjenåpne» i menyen.
 function lastItem(match) {
-  const items = matchItems(match);
+  const items = matchItems(match).filter((it) => it.obj.type !== 'halfend');
   return items.length ? items.reduce((a, b) => (b.obj.createdAt > a.obj.createdAt ? b : a)) : null;
 }
 
+function eventLabel(ev) {
+  if (ev.type === 'halfend') return `Slutt ${ev.half}. omgang`;
+  return EVENT_TYPES[ev.type].label;
+}
+
 function eventWho(match, ev, short) {
-  if (ev.type === 'timeout') return ev.side === 'us' ? (team().name || 'Vi') : match.opponent;
+  if (ev.type === 'timeout') return ev.side === 'us' ? teamName() : match.opponent;
   return shotWho(match, ev, short);
 }
 
@@ -1141,8 +1449,8 @@ function renderLastShot(match) {
   const o = last.obj;
   const what = last.kind === 'shot'
     ? `${shotWho(match, o, true)} · ${shotFromText(o, true)} · ${RESULT_WORDS[o.result]}`
-    : `${eventWho(match, o, true)} · ${EVENT_TYPES[o.type].label}`;
-  text.append(el('b', '', formatClock(shotGameSeconds(match, o)) + ' '), document.createTextNode(what));
+    : `${eventWho(match, o, true)} · ${eventLabel(o)}`;
+  text.append(el('b', '', timeText(o) + ' '), document.createTextNode(what));
 }
 
 function renderTimeline(match) {
@@ -1162,10 +1470,32 @@ function renderTimeline(match) {
   $('empty-timeline').hidden = items.length > 0;
   $('timeline-hint').hidden = items.length === 0;
 
+  let shownHalf = null;
   [...items].reverse().forEach(({ kind, obj }) => {
+    // Overskrift for hver omgang (nyeste først)
+    if (obj.half !== shownHalf) {
+      shownHalf = obj.half;
+      list.append(el('li', 'tl-half', `${obj.half}. omgang`));
+    }
+
+    // «Slutt omgang»: trykk for å se statistikk for omgangen
+    if (obj.type === 'halfend') {
+      const item = el('li', 'tl-halfend');
+      const button = el('button', 'tl-halfend-btn');
+      button.type = 'button';
+      button.append(
+        el('span', 'tl-halfend-label', `${formatClock(obj.sec)} · ${eventLabel(obj)}`),
+        el('span', 'tl-halfend-link', 'Se statistikk ›')
+      );
+      button.addEventListener('click', () => openStats(match.id, obj.half));
+      item.append(button);
+      list.append(item);
+      return;
+    }
+
     const item = el('li', `tl-item ${obj.side}` + (kind === 'event' ? ' tl-event' : ''));
 
-    const time = el('button', 'tl-time', formatClock(shotGameSeconds(match, obj)));
+    const time = el('button', 'tl-time', formatClock(obj.sec));
     time.type = 'button';
     time.title = 'Rett tiden';
     time.addEventListener('click', () => editShotTime(obj));
@@ -1216,33 +1546,24 @@ function renderTimeline(match) {
 function removeItem(match, id) {
   match.shots = match.shots.filter((s) => s.id !== id);
   match.events = (match.events || []).filter((e) => e.id !== id);
+  if (match.timeout && match.timeout.eventId === id) match.timeout = null;
 }
 
 // Retter tiden på et skudd eller en hendelse (begge har half og sec).
-async function editShotTime(shot) {
+async function editShotTime(item) {
   const match = currentMatch();
-  const halfSec = match.halfLength * 60;
   const answer = await ask({
     title: 'Når skjedde det?',
-    message: `Skriv kamptid som mm:ss. 2. omgang starter på ${formatClock(halfSec)}.`,
+    message: `Velg omgang og skriv tiden som mm:ss (0–${match.halfLength} min).`,
     okText: 'Lagre',
-    input: { value: formatClock(shotGameSeconds(match, shot)), inputMode: 'numeric' }
+    half: item.half,
+    input: { value: formatClock(item.sec), inputMode: 'numeric' }
   });
   if (answer === null) return;
-
-  const parts = answer.trim().match(/^(\d{1,3})[:.]([0-5]\d)$/);
-  if (!parts) return showToast('Skriv tiden som mm:ss, f.eks. 23:14');
-  const total = Number(parts[1]) * 60 + Number(parts[2]);
-  if (total > 2 * halfSec) return showToast(`Tiden kan ikke være over ${formatClock(2 * halfSec)}`);
-
-  // Akkurat på pausesignalet beholdes omgangen skuddet allerede hadde.
-  if (total < halfSec || (total === halfSec && shot.half === 1)) {
-    shot.half = 1;
-    shot.sec = total;
-  } else {
-    shot.half = 2;
-    shot.sec = total - halfSec;
-  }
+  const sec = parseClock(answer.text, match);
+  if (sec === null) return;
+  item.half = answer.half;
+  item.sec = sec;
   saveData();
   renderMatch();
   showToast('Tiden er rettet');
@@ -1255,7 +1576,7 @@ $('btn-undo').addEventListener('click', () => {
   removeItem(match, last.obj.id);
   saveData();
   renderMatch();
-  showToast(last.kind === 'shot' ? 'Siste skudd er angret' : `${EVENT_TYPES[last.obj.type].label} er angret`);
+  showToast(last.kind === 'shot' ? 'Siste skudd er angret' : `${eventLabel(last.obj)} er angret`);
 });
 
 // ---------- Hendelser: kort, utvisning og time-out ----------
@@ -1264,8 +1585,10 @@ const EVENT_TYPES = {
   yellow:  { label: 'Gult kort',  short: 'Gult',     badge: 'badge-yellow' },
   '2min':  { label: '2 minutter', short: '2 min',    badge: 'badge-2min', suspends: true },
   red:     { label: 'Rødt kort',  short: 'Rødt',     badge: 'badge-red', suspends: true },
-  timeout: { label: 'Time-out',   short: 'Time-out', badge: 'badge-timeout' }
+  timeout: { label: 'Time-out',   short: 'Time-out', badge: 'badge-timeout' },
+  halfend: { label: 'Slutt omgang', short: 'Slutt',  badge: 'badge' }
 };
+const CARD_TYPES = ['yellow', '2min', 'red'];
 const SUSPENSION_SEC = 120;   // en utvisning varer 2 minutter kamptid
 
 function registerEvent(type) {
@@ -1288,9 +1611,15 @@ function registerEvent(type) {
   };
   if (!match.events) match.events = [];
   match.events.push(ev);
+
+  // Time-out: kampklokka stoppes, og ett minutt telles ned.
+  if (type === 'timeout') {
+    pauseClock(match);
+    match.timeout = { eventId: ev.id, side: ev.side, endsAt: Date.now() + TIMEOUT_MS, done: false };
+  }
   saveData();
 
-  showToast(`${EVENT_TYPES[type].label}: ${eventWho(match, ev, false)}`);
+  showToast(`${eventLabel(ev)}: ${eventWho(match, ev, false)}`);
   draft = newDraft(draft.side);
   renderMatch();
 }
@@ -1311,19 +1640,29 @@ function activeSuspensions(match, atSecond, registeredBefore) {
   });
 }
 
-// Viser pågående utvisninger med nedtelling. Kalles hver gang klokka oppdateres.
+// Viser time-out og pågående utvisninger med nedtelling.
+// Kalles hver gang klokka oppdateres.
 function renderSuspensions(match) {
   const strip = $('susp-strip');
+  strip.replaceChildren();
+
+  if (match.timeout && !match.finished) {
+    const who = match.timeout.side === 'us' ? teamName() : match.opponent;
+    const left = Math.ceil(timeoutLeftMs(match) / 1000);
+    strip.append(el('span', 'susp timeout' + (left ? '' : ' done'),
+      left ? `Time-out ${who} · ${formatClock(left)}` : 'Time-out ferdig · trykk ▶ ved kampstart'));
+  }
+
   const now = gameSeconds(match, match.clock.half, Math.floor(clockMs(match) / 1000));
   const active = match.finished ? [] : activeSuspensions(match, now);
-  strip.hidden = active.length === 0;
-  strip.replaceChildren();
   active.forEach((ev) => {
     const left = shotGameSeconds(match, ev) + SUSPENSION_SEC - now;
-    const teamName = ev.side === 'us' ? (team().name || 'Vi') : match.opponent;
+    const side = ev.side === 'us' ? teamName() : match.opponent;
     const who = ev.side === 'us' ? shotWho(match, ev, true) : (ev.oppNumber ? `#${ev.oppNumber}` : 'ukjent');
-    strip.append(el('span', 'susp ' + ev.side, `${teamName} −1 · ${who} · ${formatClock(left)}`));
+    strip.append(el('span', 'susp ' + ev.side, `${side} −1 · ${who} · ${formatClock(left)}`));
   });
+
+  strip.hidden = strip.children.length === 0;
 }
 
 // =========================================================
@@ -1335,6 +1674,7 @@ function renderSuspensions(match) {
 
 let statsMatchId = 'all';   // 'all' eller id til én kamp
 let statsSide = 'us';       // 'us' = våre skudd, 'them' = motstanderens skudd mot oss
+let statsHalf = 'all';      // 'all', '1' eller '2'
 
 // Hvor teksten står i hver sone på banekartet: [x, y for sonenavnet]
 const STATS_LABEL_POS = {
@@ -1347,9 +1687,15 @@ function pct(part, whole) {
   return whole ? Math.round((part / whole) * 100) + ' %' : '–';
 }
 
-function openStats(matchId) {
+function openStats(matchId, half) {
   statsMatchId = matchId || 'all';
+  statsHalf = half ? String(half) : 'all';
   showView('stats');
+}
+
+// Er skuddet eller hendelsen med i valgt omgang?
+function inStatsHalf(item) {
+  return statsHalf === 'all' || String(item.half) === statsHalf;
 }
 
 function statsMatches() {
@@ -1406,6 +1752,10 @@ $('stats-match').addEventListener('change', (event) => {
   statsMatchId = event.target.value;
   renderStats();
 });
+$('stats-half').addEventListener('change', (event) => {
+  statsHalf = event.target.value;
+  renderStats();
+});
 $('stats-side').addEventListener('change', (event) => {
   statsSide = event.target.value;
   renderStats();
@@ -1415,6 +1765,7 @@ $('btn-stats-open-match').addEventListener('click', () => openMatch(statsMatchId
 function renderStats() {
   renderStatsSelect();
   $('stats-side').querySelector(`input[value="${statsSide}"]`).checked = true;
+  $('stats-half').querySelector(`input[value="${statsHalf}"]`).checked = true;
   $('view-stats').classList.toggle('stats-them', statsSide === 'them');
 
   const matches = statsMatches();
@@ -1424,11 +1775,13 @@ function renderStats() {
     const s = matchScore(single);
     $('stats-head-title').textContent = `${team().name || 'Vi'} ${s.us} – ${s.them} ${single.opponent}`;
     $('stats-head-meta').textContent =
-      `${formatDate(single.date)} · ${single.home ? 'Hjemme' : 'Borte'} · ${single.finished ? 'Ferdig' : 'Pågår'}`;
+      `${formatDate(single.date)} · ${single.home ? 'Hjemme' : 'Borte'} · ${single.finished ? 'Ferdig' : 'Pågår'}` +
+      (statsHalf === 'all' ? '' : ` · viser ${statsHalf}. omgang`);
   }
 
   const shots = matches.flatMap((m) =>
-    m.shots.filter((s) => s.side === statsSide).map((s) => ({ ...s, match: m })));
+    m.shots.filter((s) => s.side === statsSide && inStatsHalf(s)).map((s) => ({ ...s, match: m })));
+  $('stats-halves-card').hidden = statsHalf !== 'all';
 
   $('stats-empty').textContent = team().matches.length
     ? 'Ingen skudd registrert for dette valget ennå.'
@@ -1698,7 +2051,7 @@ function renderStatsStrength(shots) {
 function renderStatsCards(matches) {
   const isUs = statsSide === 'us';
   const allMatches = statsMatchId === 'all';
-  const events = matches.flatMap((m) => (m.events || []).map((ev) => ({ ...ev, match: m })));
+  const events = matches.flatMap((m) => (m.events || []).filter(inStatsHalf).map((ev) => ({ ...ev, match: m })));
 
   const timeouts = events.filter((ev) => ev.type === 'timeout');
   const ourTimeouts = timeouts.filter((ev) => ev.side === 'us').length;
@@ -1711,7 +2064,7 @@ function renderStatsCards(matches) {
   );
 
   // Kort og utvisninger for laget som vises (våre spillere, eller motstanderens)
-  const cards = events.filter((ev) => ev.type !== 'timeout' && ev.side === statsSide);
+  const cards = events.filter((ev) => CARD_TYPES.includes(ev.type) && ev.side === statsSide);
   const keyOf = (ev) => (isUs
     ? ev.playerId
     : (allMatches ? ev.match.opponent + ' ' : '') + (ev.oppNumber ? '#' + ev.oppNumber : 'Ukjent'));
@@ -1735,15 +2088,36 @@ function renderStatsCards(matches) {
 // SIKKERHETSKOPI
 // =========================================================
 
-$('btn-export').addEventListener('click', () => {
+function exportBackup() {
+  data.lastBackupAt = Date.now();
+  saveData();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = `skuddkart-kopi-${todayIso()}.json`;
   link.click();
   URL.revokeObjectURL(link.href);
+  renderLastBackup();
   showToast('Kopien er lagret i Nedlastinger');
-});
+}
+
+$('btn-export').addEventListener('click', exportBackup);
+
+function renderLastBackup() {
+  $('last-backup').textContent = data.lastBackupAt
+    ? 'Sist kopi: ' + new Date(data.lastBackupAt).toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' })
+    : 'Du har ikke tatt kopi ennå.';
+}
+
+// Etter en avsluttet kamp: tilby å ta sikkerhetskopi med en gang.
+async function offerBackup() {
+  const ok = await ask({
+    title: 'Ta sikkerhetskopi?',
+    message: 'Kampen er lagret på denne enheten. En kopi til fil sikrer dataene hvis telefonen blir borte eller nettleseren tømmes.',
+    okText: 'Lagre kopi'
+  });
+  if (ok) exportBackup();
+}
 
 $('input-import').addEventListener('change', async (event) => {
   const file = event.target.files[0];
@@ -1790,6 +2164,7 @@ buildCourt($('stats-court'), 'stats', false);
 svgEl('g', { id: 'stats-court-layer' }, $('stats-court'));
 
 function renderAll() {
+  renderLastBackup();
   renderTeam();
   renderTeamList();
   renderPlayers();

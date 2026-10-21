@@ -311,7 +311,17 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   padding-top: 20px;
   border-top: 1px solid var(--border);
 }
-.delete-team { margin-top: 24px; }
+.team-admin { margin-top: 28px; }
+.archived-teams { margin-top: 12px; }
+.archived-teams summary {
+  cursor: pointer;
+  padding: 8px 0;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.archived-teams .team-row { opacity: .8; }
+.status-archived { background: #e9e4f2; color: #4b3a6b; }
 
 #team-switch-list .btn { justify-content: space-between; }
 .switch-meta { font-weight: 400; font-size: .85rem; color: var(--muted); }
@@ -377,7 +387,21 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
 .mb-goals { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mb-goals .us { color: #5fd3a4; }
 .mb-goals .them { color: #f08a88; }
-.mb-clock { flex: none; text-align: center; line-height: 1.1; padding: 0 4px; }
+.mb-clock {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  line-height: 1.1;
+  cursor: pointer;
+}
+.mb-clock:hover { background: rgba(255, 255, 255, .12); }
 .clock-time { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .clock-time.ended { color: #f5c66b; }
 .clock-half { font-size: .68rem; opacity: .75; }
@@ -639,6 +663,41 @@ dialog {
   color: var(--text);
 }
 dialog::backdrop { background: rgba(10, 20, 15, .45); }
+
+/* Mobil: vinduene legges øverst, så tastaturet ikke dekker knappene */
+@media (max-width: 599px) {
+  dialog {
+    margin: 12px auto auto;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    padding: 18px;
+  }
+}
+.stats-half { margin-top: 6px; }
+
+/* Kamptropp: avkrysning av spillere */
+.squad-count { font-weight: 400; color: var(--muted); font-size: .85rem; }
+.squad-tools { display: flex; gap: 14px; margin-bottom: 6px; }
+.link-btn { border: 0; background: none; padding: 4px 0; font: inherit; font-size: .85rem; font-weight: 600; color: var(--green-dark); cursor: pointer; }
+.squad-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.squad-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: .9rem;
+}
+.squad-row input { width: 18px; height: 18px; accent-color: var(--green); flex: none; }
+.squad-row b { font-variant-numeric: tabular-nums; min-width: 20px; white-space: nowrap; }
+.squad-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.squad-row:has(input:checked) { border-color: var(--green); background: var(--green-soft); }
+.squad-row.keeper b::after { content: " K"; font-size: .7rem; color: var(--muted); }
+.pbtn.add { border-style: dashed; color: var(--muted); }
 dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
 #ask-dialog h3 { margin-bottom: 8px; }
 #ask-input { margin-bottom: 8px; }
@@ -746,6 +805,37 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   color: var(--green-dark);
 }
 .susp.them { background: var(--red-soft); color: var(--red); }
+.susp.timeout { background: #e3ecf7; color: #24456b; }
+.susp.timeout.done { background: #f5c66b; color: var(--text); }
+
+/* Tidslinjen: overskrift per omgang og «Slutt omgang» */
+.tl-half {
+  margin: 14px 0 2px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tl-half:first-child { margin-top: 4px; }
+.tl-halfend { border-top: 1px solid var(--border); padding: 8px 0; }
+.tl-halfend-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--muted);
+  border-radius: 10px;
+  background: var(--bg);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+.tl-halfend-label { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tl-halfend-link { font-size: .85rem; color: var(--green-dark); font-weight: 600; }
+.ask-half { margin-bottom: 10px; }
 
 /* Hendelser i tidslinjen */
 .tl-event .tl-main { border-left-style: dashed; }

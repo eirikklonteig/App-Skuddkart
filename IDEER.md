@@ -2,7 +2,7 @@
 
 Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 
-## Versjon 1 (pågår)
+## Ferdig
 - [x] Steg 1: Laget og spillerliste, sikkerhetskopi
 - [x] Steg 2: Kamper, kampklokke, skuddregistrering og tidslinje
 - [x] Steg 2b: Banesoner – trykk på en tegnet bane for hvor skuddet kom fra
@@ -15,18 +15,34 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - [x] Steg 4: Statistikk (redningsprosent, skuddkart, per spiller, per sone, per omgang)
       + «Avslutt kamp» i ⋯-menyen: stopper klokka, markerer kampen som ferdig,
       låser registreringen, åpner kampens statistikk. «Gjenåpne kamp» for rettinger.
-- [x] Steg 5: Hendelser – 2 minutter, gult kort (evt. rødt/blått) og time-out, med tid.
-      Bør være på plass før ekte seriekamper føres (gir statistikk i over-/undertall
-      og før/etter time-out).
-
+- [x] Steg 5: Hendelser – 2 minutter, gult kort, rødt kort og time-out, med tid.
 - [x] Steg 6: Flere lag – lagliste, nytt lag (med kopiering av spillere), bytte lag
       fra toppfeltet, slette lag. Spillere, kamper og statistikk følger valgt lag.
+- [x] Versjon 0.9 (etter første ekte kamp):
+      - Klokka starter på 00:00 i hver omgang, og kan stilles ved å trykke på den
+      - Time-out stopper kampklokka og teller ned 1 minutt; ▶ starter kampen igjen
+      - «Avslutt 1. omgang» som hendelse i tidslinjen (trykk for omgangens statistikk)
+      - Statistikk for hele kampen, 1. omgang eller 2. omgang
+      - Kamptropp ved ny kamp (forrige tropp forhåndsvalgt) og «Juster kamptropp»
+      - «+ spiller» i kampen
+      - Skjemaene legges øverst på mobil, så tastaturet ikke dekker knappene
+      - Påminnelse om sikkerhetskopi når en kamp avsluttes
+      - Arkivere og hente fram lag; slette lag er alltid tilgjengelig
 
-## Neste gang
-- **Arkivere lag:** skjule gamle lag (f.eks. forrige sesong) fra listen uten å slette
-  kamper og statistikk, med mulighet for å hente dem fram igjen.
-- **Sletting av lag:** gjøre knappen lettere å finne (i dag nederst på «Lag»-siden,
-  og bare synlig når det finnes minst to lag).
+## Versjon 1.0
+- **Pauseanalyse:** kort oppsummering i klartekst ved «Slutt 1. omgang» – hvem scorer
+  mye og hvorfra, hva keeper bør følge med på, hva vi bør justere. Bare funn med nok
+  skudd bak (f.eks. minst 3).
+- **Dele statistikk:** «Del / skriv ut» som lager en ryddig utskrift som kan lagres som PDF
+
+## Versjon 2.0 – brukere og lagring på nett
+- **Innlogging:** eier (admin) og én registrerende bruker per lag (evt. delt innlogging)
+- **Lagring på nett** (forslag: Supabase med data i EU), som også virker uten nett i hallen
+  og synkroniserer etterpå
+- **Flyt:** bruker → lag → spillere (lagets stall) → kamptropp per kamp
+- **Motstanderdatabase:** motstanderlag med draktnummer, gjenbrukes mot samme lag
+- **Personvern:** bare draktnummer for motstandere; for egne spillere minst mulig
+  (f.eks. fornavn og nummer). Klubben bør godkjenne før data lagres på nett.
 
 ## Senere
 - **Før og etter time-out:** effektivitet i minuttene før og etter hver time-out
@@ -35,9 +51,7 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - **Type angrep:** kontring, gjennombrudd, vanlig angrep (valgfritt ekstra trykk)
 - **Felles spillere på tvers av lag:** én spillerliste for klubben, så statistikk for en
   spiller som spiller på flere lag kan samles (i dag legges spilleren inn på hvert lag)
-- **Innlogging og roller:** admin, trener og lagleder, med felles lagring på nett
 - **Kobling til klubbens SharePoint**
-- **Dele statistikk:** lage PDF som kan sendes til laget
 - **Navn på motstanderspillere:** koble draktnummer til navn per kamp i etterkant
   (skudd lagres allerede med nummer, så gamle kamper får navn automatisk)
 - **Velge motstander fra liste** over tidligere motstandere, så navnet skrives likt hver gang

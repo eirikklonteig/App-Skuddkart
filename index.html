@@ -52,6 +52,12 @@
       <!-- Alle lagene. Trykk på et lag for å velge det. -->
       <ul class="card-list team-list" id="team-list"></ul>
 
+      <!-- Arkiverte lag (skjult når det ikke finnes noen) -->
+      <details class="archived-teams" id="archived-teams" hidden>
+        <summary id="archived-summary">Arkiverte lag</summary>
+        <ul class="card-list team-list" id="archived-list"></ul>
+      </details>
+
       <!-- Det valgte laget: innstillinger og spillere -->
       <div class="view-head team-section-head">
         <h2 id="team-heading">Tune IL</h2>
@@ -81,7 +87,14 @@
         <ul class="player-list" id="list-players"></ul>
       </div>
 
-      <button class="btn btn-ghost-danger delete-team" id="btn-delete-team">Slett dette laget</button>
+      <div class="card team-admin">
+        <h3>Administrer laget</h3>
+        <p class="muted" id="team-admin-text"></p>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-archive-team">Arkiver laget</button>
+          <button class="btn btn-ghost-danger" id="btn-delete-team">Slett laget</button>
+        </div>
+      </div>
     </section>
 
     <!-- VISNING: Kampliste -->
@@ -106,10 +119,11 @@
           <span class="mb-goals"><span class="us" id="sb-us">0</span>–<span class="them" id="sb-them">0</span></span>
           <span class="mb-name mb-name-them" id="sb-them-name"></span>
         </div>
-        <div class="mb-clock">
-          <div class="clock-time" id="clock-time">00:00</div>
-          <div class="clock-half" id="clock-half">1. omg</div>
-        </div>
+        <!-- Trykk på klokka for å stille den -->
+        <button class="mb-clock" id="btn-set-clock" aria-label="Still klokka">
+          <span class="clock-time" id="clock-time">00:00</span>
+          <span class="clock-half" id="clock-half">1. omg</span>
+        </button>
         <button class="mb-btn mb-play" id="btn-clock" aria-label="Start klokka">▶</button>
         <button class="mb-btn" id="btn-match-menu" aria-label="Kampmeny">⋯</button>
       </div>
@@ -194,6 +208,11 @@
           <label><input type="radio" name="stats-side" value="us" checked><span>Våre skudd</span></label>
           <label><input type="radio" name="stats-side" value="them"><span>Keeper og forsvar</span></label>
         </div>
+        <div class="segmented stats-half" id="stats-half">
+          <label><input type="radio" name="stats-half" value="all" checked><span>Hele kampen</span></label>
+          <label><input type="radio" name="stats-half" value="1"><span>1. omgang</span></label>
+          <label><input type="radio" name="stats-half" value="2"><span>2. omgang</span></label>
+        </div>
       </div>
 
       <div class="card stats-head" id="stats-head" hidden>
@@ -240,7 +259,7 @@
           <div class="table-wrap"><table class="stats-table" id="stats-opp-table"></table></div>
         </div>
 
-        <div class="card">
+        <div class="card" id="stats-halves-card">
           <h3>Per omgang</h3>
           <div class="table-wrap"><table class="stats-table" id="stats-halves"></table></div>
         </div>
@@ -270,6 +289,7 @@
           Alt lagres i denne nettleseren. Ta en kopi jevnlig, eller bruk den
           for å flytte data mellom PC og mobil.
         </p>
+        <p class="muted" id="last-backup"></p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-export">Lagre kopi til fil</button>
           <label class="btn btn-secondary">
@@ -285,7 +305,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.8</p>
+      <p class="muted small">Skuddkart versjon 0.9</p>
     </section>
   </main>
 
@@ -296,12 +316,12 @@
 
       <label class="field">
         <span>Draktnummer</span>
-        <input type="number" id="input-number" min="1" max="99" inputmode="numeric" required>
+        <input type="number" id="input-number" min="1" max="99" inputmode="numeric" enterkeyhint="next" required>
       </label>
 
       <label class="field">
         <span>Navn</span>
-        <input type="text" id="input-name" maxlength="40" required autocomplete="off">
+        <input type="text" id="input-name" maxlength="40" required autocomplete="off" enterkeyhint="done">
       </label>
 
       <fieldset class="field">
@@ -350,6 +370,15 @@
           <label><input type="radio" name="venue" value="home" checked><span>Hjemme</span></label>
           <label><input type="radio" name="venue" value="away"><span>Borte</span></label>
         </div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend>Kamptropp <span class="squad-count" id="new-squad-count"></span></legend>
+        <div class="squad-tools">
+          <button type="button" class="link-btn" data-squad-all="new-squad">Velg alle</button>
+          <button type="button" class="link-btn" data-squad-none="new-squad">Fjern alle</button>
+        </div>
+        <div class="squad-list" id="new-squad"></div>
       </fieldset>
 
       <p class="form-error" id="match-error" hidden></p>
@@ -405,12 +434,31 @@
     </div>
   </dialog>
 
+  <!-- Juster kamptropp under kampen -->
+  <dialog id="squad-dialog">
+    <form id="squad-form">
+      <h3>Kamptropp <span class="squad-count" id="edit-squad-count"></span></h3>
+      <div class="squad-tools">
+        <button type="button" class="link-btn" data-squad-all="edit-squad">Velg alle</button>
+        <button type="button" class="link-btn" data-squad-none="edit-squad">Fjern alle</button>
+      </div>
+      <div class="squad-list" id="edit-squad"></div>
+      <div class="btn-row end">
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-squad">Avbryt</button>
+        <button type="submit" class="btn btn-primary">Lagre tropp</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Kampmeny -->
   <dialog id="match-menu">
     <h3 id="menu-title">Kamp</h3>
     <div class="menu-list">
       <button type="button" class="btn btn-secondary" id="btn-menu-stats">Statistikk for kampen</button>
-      <button type="button" class="btn btn-secondary" id="btn-half">Start 2. omgang</button>
+      <button type="button" class="btn btn-secondary" id="btn-half">Avslutt 1. omgang</button>
+      <button type="button" class="btn btn-secondary" id="btn-reopen-half" hidden>Gjenåpne 1. omgang</button>
+      <button type="button" class="btn btn-secondary" id="btn-squad">Juster kamptropp</button>
       <button type="button" class="btn btn-secondary" id="btn-finish">Avslutt kamp</button>
       <button type="button" class="btn btn-ghost-danger" id="btn-delete-match">Slett kamp</button>
       <button type="button" class="btn btn-primary" id="btn-close-menu">Lukk</button>
@@ -422,7 +470,11 @@
     <form id="ask-form">
       <h3 id="ask-title"></h3>
       <p class="muted" id="ask-message"></p>
-      <input type="text" id="ask-input" autocomplete="off" hidden>
+      <div class="segmented ask-half" id="ask-half" hidden>
+        <label><input type="radio" name="ask-half" value="1" checked><span>1. omgang</span></label>
+        <label><input type="radio" name="ask-half" value="2"><span>2. omgang</span></label>
+      </div>
+      <input type="text" id="ask-input" autocomplete="off" enterkeyhint="done" hidden>
       <div class="btn-row end">
         <span class="spacer"></span>
         <button type="button" class="btn btn-secondary" id="ask-cancel">Avbryt</button>
