@@ -28,9 +28,9 @@ const AREAS = [
   { id: 'm69', label: 'Midt 6–9 m',        short: 'Midt',     distance: '6-9', inner: true,  x1: -2.5, x2: 2.5,  lx: 100, ly: 95 },
   { id: 'r69', label: 'Høyre 6–9 m',       short: 'Høyre',    distance: '6-9', inner: true,  x1: 2.5,  x2: 6.5,  lx: 148, ly: 82 },
   { id: 'rw',  label: 'Høyre kant',        short: 'H. kant',  distance: '6-9', inner: true,  x1: 6.5,  x2: 10,   lx: 183, ly: 42, wing: true },
-  { id: 'l9',  label: 'Venstre back 9 m+', short: 'V. back',  distance: '9+',  inner: false, x1: -10,  x2: -3.5, lx: 32,  ly: 127 },
-  { id: 'm9',  label: 'Midtback 9 m+',     short: 'Midtback', distance: '9+',  inner: false, x1: -3.5, x2: 3.5,  lx: 100, ly: 127 },
-  { id: 'r9',  label: 'Høyre back 9 m+',   short: 'H. back',  distance: '9+',  inner: false, x1: 3.5,  x2: 10,   lx: 168, ly: 127 }
+  { id: 'l9',  label: 'Venstre bak 9 m+',  short: 'V. bak',   distance: '9+',  inner: false, x1: -10,  x2: -3.5, lx: 32,  ly: 127 },
+  { id: 'm9',  label: 'Midt bak 9 m+',     short: 'Midt bak', distance: '9+',  inner: false, x1: -3.5, x2: 3.5,  lx: 100, ly: 127 },
+  { id: 'r9',  label: 'Høyre bak 9 m+',    short: 'H. bak',   distance: '9+',  inner: false, x1: 3.5,  x2: 10,   lx: 168, ly: 127 }
 ];
 const AREA_7M = { id: '7m', label: '7 m-kast', short: '7 m', distance: '7m', pos: { x: 0, y: 7 } };
 
