@@ -33,7 +33,7 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - **Pauseanalyse:** kort oppsummering i klartekst ved «Slutt 1. omgang» – hvem scorer
   mye og hvorfra, hva keeper bør følge med på, hva vi bør justere. Bare funn med nok
   skudd bak (f.eks. minst 3).
-- **Dele statistikk:** «Del / skriv ut» som lager en ryddig utskrift som kan lagres som PDF
+- [x] **Dele statistikk:** «Del / PDF» på statistikksiden (versjon 0.9.2)
 
 ## Versjon 2.0 – brukere og lagring på nett
 - **Innlogging:** eier (admin) og én registrerende bruker per lag (evt. delt innlogging)

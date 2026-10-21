@@ -2084,6 +2084,72 @@ function renderStatsCards(matches) {
     rows.length ? ['Totalt', count(cards, 'yellow'), count(cards, '2min'), count(cards, 'red')] : null);
 }
 
+// ---------- Del / PDF ----------
+//
+// Lager en rapport med både våre skudd og keeper/forsvar for valgt kamp og
+// omgang, og åpner nettleserens utskrift. Derfra kan den lagres som PDF
+// eller deles (på iPhone: del-knappen i utskriftsvinduet).
+
+function printReport() {
+  if (!statsMatches().some((m) => m.shots.some(inStatsHalf))) {
+    return showToast('Ingen skudd å lage rapport av ennå');
+  }
+  const report = $('print-report');
+  report.replaceChildren();
+
+  const single = statsMatchId === 'all' ? null : statsMatches()[0];
+  const head = el('header', 'print-head');
+  head.append(el('h1', '', `Skuddkart · ${teamName()}`));
+  if (single) {
+    const s = matchScore(single);
+    head.append(el('p', 'print-title', `${teamName()} ${s.us} – ${s.them} ${single.opponent}`));
+  } else {
+    head.append(el('p', 'print-title', `Alle kamper (${team().matches.length})`));
+  }
+  const meta = [];
+  if (single) meta.push(formatDate(single.date), single.home ? 'Hjemme' : 'Borte');
+  meta.push(statsHalf === 'all' ? 'Hele kampen' : `${statsHalf}. omgang`);
+  meta.push('Laget ' + new Date().toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' }));
+  head.append(el('p', 'print-meta', meta.join(' · ')));
+  report.append(head);
+
+  // Lag én del for våre skudd og én for keeper/forsvar
+  const shownSide = statsSide;
+  ['us', 'them'].forEach((side) => {
+    statsSide = side;
+    renderStats();
+    const section = el('section', 'print-section' + (side === 'them' ? ' stats-them' : ''));
+    section.append(el('h2', '', side === 'us' ? 'Våre skudd' : 'Keeper og forsvar'));
+    if ($('stats-content').hidden) {
+      section.append(el('p', 'muted', 'Ingen skudd registrert.'));
+    } else {
+      const copy = $('stats-content').cloneNode(true);
+      // Banetegningen trenger egne id-er i kopien
+      const svg = copy.querySelector('svg.court');
+      svg.innerHTML = svg.innerHTML.replaceAll('stats-', `print-${side}-`);
+      copy.querySelectorAll('[id]').forEach((node) => { if (!node.closest('svg')) node.removeAttribute('id'); });
+      copy.removeAttribute('id');
+      section.append(copy);
+    }
+    report.append(section);
+  });
+  statsSide = shownSide;
+  renderStats();
+
+  window.print();
+}
+
+$('btn-print').addEventListener('click', printReport);
+
+// ---------- Brukerveiledning ----------
+
+$('btn-help').addEventListener('click', () => {
+  showView('more');
+  const first = $('guide').querySelector('details');
+  if (first && !$('guide').querySelector('details[open]')) first.open = true;
+  $('guide').scrollIntoView({ block: 'start' });
+});
+
 // =========================================================
 // SIKKERHETSKOPI
 // =========================================================

@@ -19,6 +19,7 @@
         <span id="topbar-team">Tune IL</span> <span aria-hidden="true">▾</span>
       </button>
     </div>
+    <button class="help-btn" id="btn-help" aria-label="Slik bruker du Skuddkart">?</button>
   </header>
 
   <!-- Menyen (nederst på mobil, øverst på PC) -->
@@ -196,6 +197,7 @@
     <section class="view" id="view-stats" hidden>
       <div class="view-head">
         <h2>Statistikk</h2>
+        <button class="btn btn-secondary" id="btn-print">Del / PDF</button>
       </div>
 
       <!-- Valg: hvilken kamp, og våre skudd eller motstanderens -->
@@ -283,6 +285,84 @@
     <section class="view" id="view-more" hidden>
       <h2>Mer</h2>
 
+      <!-- Brukerveiledning -->
+      <div class="card guide" id="guide">
+        <h3>Slik bruker du Skuddkart</h3>
+        <p class="muted">Trykk på et tema for å lese mer.</p>
+
+        <details>
+          <summary>1. Kom i gang: lag og spillere</summary>
+          <ul>
+            <li>Gå til <b>Lag</b>. Lag et lag med <b>+ Nytt lag</b>, eller bruk laget som finnes.</li>
+            <li>Velg <b>omgangslengde</b> for laget (maks 30 min).</li>
+            <li>Legg inn spillere med <b>+ Ny spiller</b>: draktnummer, navn og om spilleren er <b>keeper</b>.</li>
+            <li>Har du flere lag, bytter du lag ved å trykke på <b>lagnavnet ▾</b> i det grønne toppfeltet.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>2. Før kampen: ny kamp og kamptropp</summary>
+          <ul>
+            <li>Gå til <b>Kamper</b> og trykk <b>+ Ny kamp</b>.</li>
+            <li>Skriv motstanderen likt hver gang (for eksempel alltid «Sarpsborg»), så kan statistikken samles senere.</li>
+            <li>Kryss av <b>kamptroppen</b>. Troppen fra forrige kamp er valgt på forhånd.</li>
+            <li>Tips: lag kampen hjemme eller i garderoben, så er du klar når kampen starter.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>3. Under kampen: registrere skudd</summary>
+          <ul>
+            <li>Velg <b>Vårt skudd</b> (grønn) eller <b>Deres skudd</b> (rød) øverst.</li>
+            <li>Trykk <b>spilleren</b> som skjøt, <b>hvor på banen</b> skuddet kom fra og <b>hvor på målet</b> det gikk. Rekkefølgen er valgfri. Bruk <b>7 m</b> for 7-meterskast.</li>
+            <li>Avslutt med <b>Mål</b>, <b>Redning</b> eller <b>Utenfor</b>. Det er dette trykket som lagrer skuddet.</li>
+            <li>Ved <b>Deres skudd</b> velger du hvem som står i mål for oss. Motstanderens draktnummer er valgfritt: trykk <b>+ nr</b> eller <b>?</b> for ukjent.</li>
+            <li>Trykket feil? <b>↶ Angre</b> fjerner det siste du registrerte.</li>
+            <li>Mangler en spiller? Trykk <b>+</b> nederst i spillerkolonnen.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>4. Klokke, time-out og omganger</summary>
+          <ul>
+            <li><b>▶</b> starter klokka og <b>❚❚</b> stopper den. Klokka starter på 00:00 i hver omgang.</li>
+            <li>Er klokka ute av takt med hallens klokke? <b>Trykk på tiden</b> og skriv inn riktig tid.</li>
+            <li><b>Time-out</b> stopper klokka og teller ned 1 minutt. Trykk <b>▶</b> når spillet starter igjen.</li>
+            <li>I pausen: <b>⋯ → Avslutt 1. omgang</b>. Rett det som trengs, og trykk <b>▶</b> for å starte 2. omgang.</li>
+            <li>Tid på et skudd kan rettes ved å trykke på tiden i <b>tidslinjen</b>.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>5. Kort, utvisninger og time-out</summary>
+          <ul>
+            <li>Trykk <b>spilleren</b> først, og så <b>Gult</b>, <b>2 min</b> eller <b>Rødt</b>.</li>
+            <li>Utvisninger vises øverst med nedtelling, så du ser når laget er i over- eller undertall.</li>
+            <li><b>Time-out</b> trenger ingen spiller. Velg riktig lag (Vårt/Deres) først.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>6. Etter kampen: statistikk og PDF</summary>
+          <ul>
+            <li><b>⋯ → Avslutt kamp</b> stopper klokka og åpner statistikken.</li>
+            <li>I <b>Statistikk</b> velger du kamp, <b>Våre skudd</b> eller <b>Keeper og forsvar</b>, og hele kampen eller én omgang.</li>
+            <li><b>Del / PDF</b> lager en rapport med både våre skudd og keeper. På iPhone: trykk <b>del-knappen</b> i utskriftsvinduet for å sende den, eller velg <b>Lagre i Filer</b>.</li>
+            <li>Statistikken kan også sees underveis, for eksempel i pausen: <b>⋯ → Statistikk for kampen</b>.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>7. Lagring og sikkerhet</summary>
+          <ul>
+            <li>Alt lagres <b>bare på denne enheten</b>. Andre som åpner lenken, får en tom app og ser ikke dine data.</li>
+            <li>Ta <b>sikkerhetskopi</b> etter hver kamp (appen spør når du avslutter). Kopien kan også flytte data til en annen telefon eller PC.</li>
+            <li>For motstanderen lagres bare draktnummer, ikke navn.</li>
+            <li>Tips: legg appen på hjemskjermen. På iPhone: del-knappen i Safari → <b>Legg til på Hjem-skjerm</b>.</li>
+          </ul>
+        </details>
+      </div>
+
       <div class="card">
         <h3>Sikkerhetskopi</h3>
         <p class="muted">
@@ -305,9 +385,12 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.9.1</p>
+      <p class="muted small">Skuddkart versjon 0.9.2</p>
     </section>
   </main>
+
+  <!-- Rapporten som skrives ut / lagres som PDF (vises bare ved utskrift) -->
+  <div class="print-report" id="print-report"></div>
 
   <!-- Skjema for å legge til / endre spiller -->
   <dialog id="player-dialog">

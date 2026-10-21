@@ -954,6 +954,50 @@ select {
 .stats-table tfoot td { border-top: 2px solid var(--border); font-weight: 700; }
 .stats-table .num { display: inline-block; min-width: 26px; font-weight: 700; }
 
+/* ---------- ?-knapp og brukerveiledning ---------- */
+.help-btn {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(255, 255, 255, .7);
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.help-btn:hover { background: rgba(255, 255, 255, .15); }
+.guide details { border-top: 1px solid var(--border); }
+.guide summary {
+  padding: 12px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+.guide ul { margin: 0 0 14px; padding-left: 20px; }
+.guide li { margin: 6px 0; }
+
+/* ---------- PDF-rapport (utskrift) ---------- */
+.print-report { display: none; }
+.print-head h1 { margin: 0; font-size: 1.1rem; color: var(--green-dark); }
+.print-title { margin: 4px 0 0; font-size: 1.4rem; font-weight: 700; }
+.print-meta { margin: 2px 0 12px; color: var(--muted); font-size: .85rem; }
+.print-section > h2 { margin: 18px 0 4px; font-size: 1.2rem; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: #fff; padding: 0; font-size: 11pt; }
+  body > *:not(.print-report) { display: none !important; }
+  .print-report { display: block; }
+  .print-section + .print-section { break-before: page; }
+  .print-report .card, .print-report .kpi { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
+  .print-report .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .print-report .stats-maps { grid-template-columns: 1fr 1fr; }
+  .print-report .table-wrap { overflow: visible; }
+}
+
 /* ---------- Kort beskjed (toast) ---------- */
 .toast {
   position: fixed;
