@@ -114,6 +114,18 @@ function el(tag, className, text) {
   return node;
 }
 
+// Lager et ikon fra ikonsettet øverst i index.html (for eksempel icon('play')).
+function icon(name) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(ns, 'use');
+  use.setAttribute('href', '#i-' + name);
+  svg.append(use);
+  return svg;
+}
+
 let toastTimer;
 function showToast(message) {
   const toast = $('toast');
@@ -474,8 +486,9 @@ function fillPlayerList(listElement, players) {
     row.append(
       el('span', 'shirt' + (player.role === 'keeper' ? ' keeper' : ''), player.number),
       el('span', 'player-name', player.name),
-      el('span', 'chevron', '›')
+      el('span', 'chevron')
     );
+    row.querySelector('.chevron').append(icon('next'));
     row.addEventListener('click', () => openPlayerDialog(player));
     const item = el('li');
     item.append(row);
@@ -773,7 +786,11 @@ function renderClock(match) {
   $('clock-half').textContent = c.halfEnded
     ? (c.half === 1 ? 'Pause' : 'Slutt')
     : `${c.half}. omg · ${match.halfLength} min`;
-  $('btn-clock').textContent = c.running ? '❚❚' : '▶';
+  const clockIcon = c.running ? 'pause' : 'play';
+  if ($('btn-clock').dataset.icon !== clockIcon) {   // bytt bare når det endres
+    $('btn-clock').replaceChildren(icon(clockIcon));
+    $('btn-clock').dataset.icon = clockIcon;
+  }
   $('btn-clock').classList.toggle('running', c.running);
   $('btn-clock').setAttribute('aria-label', c.running ? 'Pause klokka' : 'Start klokka');
   renderSuspensions(match);
@@ -1524,7 +1541,8 @@ function renderTimeline(match) {
       badge = el('span', 'badge ' + type.badge, type.short);
     }
 
-    const remove = el('button', 'tl-delete', '×');
+    const remove = el('button', 'tl-delete');
+    remove.append(icon('x'));
     remove.type = 'button';
     remove.setAttribute('aria-label', kind === 'shot' ? 'Slett skuddet' : 'Slett hendelsen');
     remove.addEventListener('click', async () => {

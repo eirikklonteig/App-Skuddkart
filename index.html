@@ -3,12 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#00965E">
+  <meta name="theme-color" content="#f2f4f3">
   <title>Skuddkart</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Ikoner. Brukes slik: <svg class="icon"><use href="#i-play"/></svg> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l10.6-6.8a1 1 0 0 0 0-1.72L9.5 4.34A1 1 0 0 0 8 5.2z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.3a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  </svg>
   <!-- Toppfelt med logo og lagnavn -->
   <header class="topbar">
     <img src="icon.svg" alt="" class="logo">
@@ -16,10 +30,10 @@
       <h1>Skuddkart</h1>
       <!-- Trykk på lagnavnet for å bytte lag -->
       <button class="team-switch" id="btn-team-switch" aria-label="Bytt lag">
-        <span id="topbar-team">Tune IL</span> <span aria-hidden="true">▾</span>
+        <span id="topbar-team">Tune IL</span> <svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>
       </button>
     </div>
-    <button class="help-btn" id="btn-help" aria-label="Slik bruker du Skuddkart">?</button>
+    <button class="icon-btn" id="btn-help" aria-label="Slik bruker du Skuddkart"><svg class="icon" aria-hidden="true"><use href="#i-help"/></svg></button>
   </header>
 
   <!-- Menyen (nederst på mobil, øverst på PC) -->
@@ -47,7 +61,7 @@
     <section class="view" id="view-team">
       <div class="view-head">
         <h2>Lag</h2>
-        <button class="btn btn-secondary" id="btn-new-team">+ Nytt lag</button>
+        <button class="btn btn-secondary" id="btn-new-team"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Nytt lag</button>
       </div>
 
       <!-- Alle lagene. Trykk på et lag for å velge det. -->
@@ -62,7 +76,7 @@
       <!-- Det valgte laget: innstillinger og spillere -->
       <div class="view-head team-section-head">
         <h2 id="team-heading">Tune IL</h2>
-        <button class="btn btn-primary" id="btn-add-player">+ Ny spiller</button>
+        <button class="btn btn-primary" id="btn-add-player"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Ny spiller</button>
       </div>
 
       <div class="field-row">
@@ -102,7 +116,7 @@
     <section class="view" id="view-matches" hidden>
       <div class="view-head">
         <h2>Kamper</h2>
-        <button class="btn btn-primary" id="btn-new-match">+ Ny kamp</button>
+        <button class="btn btn-primary" id="btn-new-match"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Ny kamp</button>
       </div>
       <p class="empty" id="empty-matches">
         Ingen kamper ennå. Trykk «+ Ny kamp» for å starte.
@@ -114,7 +128,7 @@
     <section class="view" id="view-match" hidden>
       <!-- Smal resultatlinje med klokke -->
       <div class="match-bar">
-        <button class="mb-btn" id="btn-back" aria-label="Tilbake til kamper">‹</button>
+        <button class="mb-btn" id="btn-back" aria-label="Tilbake til kamper"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button>
         <div class="mb-score">
           <span class="mb-name mb-name-us" id="sb-us-name"></span>
           <span class="mb-goals"><span class="us" id="sb-us">0</span>–<span class="them" id="sb-them">0</span></span>
@@ -125,8 +139,8 @@
           <span class="clock-time" id="clock-time">00:00</span>
           <span class="clock-half" id="clock-half">1. omg</span>
         </button>
-        <button class="mb-btn mb-play" id="btn-clock" aria-label="Start klokka">▶</button>
-        <button class="mb-btn" id="btn-match-menu" aria-label="Kampmeny">⋯</button>
+        <button class="mb-btn mb-play" id="btn-clock" aria-label="Start klokka"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></button>
+        <button class="mb-btn" id="btn-match-menu" aria-label="Kampmeny"><svg class="icon" aria-hidden="true"><use href="#i-more"/></svg></button>
       </div>
 
       <!-- Aktive utvisninger med nedtelling -->
@@ -177,7 +191,7 @@
 
               <div class="last-shot">
                 <span class="last-text" id="last-shot"></span>
-                <button class="btn btn-secondary btn-small" id="btn-undo">↶ Angre</button>
+                <button class="btn btn-secondary btn-small" id="btn-undo"><svg class="icon" aria-hidden="true"><use href="#i-undo"/></svg>Angre</button>
               </div>
             </div>
           </div>
@@ -197,7 +211,7 @@
     <section class="view" id="view-stats" hidden>
       <div class="view-head">
         <h2>Statistikk</h2>
-        <button class="btn btn-secondary" id="btn-print">Del / PDF</button>
+        <button class="btn btn-secondary" id="btn-print"><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>Del / PDF</button>
       </div>
 
       <!-- Valg: hvilken kamp, og våre skudd eller motstanderens -->
