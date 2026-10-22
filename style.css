@@ -1075,6 +1075,12 @@ select {
   .print-report .table-wrap { overflow: visible; }
 }
 
+/* Tips om å flytte data fra Safari til hjemskjerm-appen */
+.move-tip { margin: 0 0 20px; border: 2px solid var(--green); }
+.move-tip p { margin: 0 0 8px; }
+.move-tip ol { margin: 0 0 14px; padding-left: 20px; }
+.move-tip li { margin: 6px 0; }
+
 /* ---------- Kort beskjed (toast) ---------- */
 .toast {
   position: fixed;

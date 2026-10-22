@@ -2,8 +2,16 @@
 <html lang="no">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f2f4f3">
+
+  <!-- Fullskjerm-app når den legges på hjemskjermen -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Skuddkart">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Skuddkart</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -59,6 +67,21 @@
   <main>
     <!-- VISNING: Lag og spillere -->
     <section class="view" id="view-team">
+      <!-- Vises når appen åpnes fra hjemskjermen for første gang (uten data) -->
+      <div class="card move-tip" id="move-tip" hidden>
+        <h3>Velkommen til Skuddkart-appen</h3>
+        <p>Har du allerede spillere og kamper i Safari? iPhone holder dataene i Safari og i appen
+          på hjemskjermen hver for seg, så du må flytte dem over én gang:</p>
+        <ol>
+          <li>Åpne <b>skuddkart.vercel.app i Safari</b>, gå til <b>Mer</b> og trykk <b>Lagre kopi til fil</b>. Velg <b>Lagre i Filer</b>.</li>
+          <li>Kom tilbake hit og trykk <b>Hent kopi</b> under. Velg filen du lagret.</li>
+        </ol>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-move-import">Hent kopi</button>
+          <button class="btn btn-secondary" id="btn-move-close">Starter med tom app</button>
+        </div>
+      </div>
+
       <div class="view-head">
         <h2>Lag</h2>
         <button class="btn btn-secondary" id="btn-new-team"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Nytt lag</button>
@@ -372,7 +395,8 @@
             <li>Alt lagres <b>bare på denne enheten</b>. Andre som åpner lenken, får en tom app og ser ikke dine data.</li>
             <li>Ta <b>sikkerhetskopi</b> etter hver kamp (appen spør når du avslutter). Kopien kan også flytte data til en annen telefon eller PC.</li>
             <li>For motstanderen lagres bare draktnummer, ikke navn.</li>
-            <li>Tips: legg appen på hjemskjermen. På iPhone: del-knappen i Safari → <b>Legg til på Hjem-skjerm</b>.</li>
+            <li><b>Legg appen på hjemskjermen</b> (iPhone): åpne skuddkart.vercel.app i Safari, trykk del-knappen og velg <b>Legg til på Hjem-skjerm</b>. Da åpnes den i fullskjerm og virker også uten nett.</li>
+            <li><b>Viktig:</b> appen på hjemskjermen har <b>egne data</b>, adskilt fra Safari. Flytt dataene én gang: <b>Lagre kopi til fil</b> i Safari, og <b>Hent kopi fra fil</b> i appen.</li>
           </ul>
         </details>
       </div>
@@ -399,7 +423,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.9.2</p>
+      <p class="muted small">Skuddkart versjon 0.9.3</p>
     </section>
   </main>
 

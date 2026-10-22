@@ -2172,18 +2172,54 @@ $('btn-help').addEventListener('click', () => {
 // SIKKERHETSKOPI
 // =========================================================
 
-function exportBackup() {
-  data.lastBackupAt = Date.now();
-  saveData();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+// Lagrer en kopi av alle data til fil. På mobil åpnes del-arket
+// (Lagre i Filer, e-post, AirDrop). På PC lastes filen ned.
+async function exportBackup() {
+  const name = `skuddkart-kopi-${todayIso()}.json`;
+  const text = JSON.stringify(data, null, 2);
+  const backupFile = new File([text], name, { type: 'application/json' });
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+  if (isTouch && navigator.canShare && navigator.canShare({ files: [backupFile] })) {
+    try {
+      await navigator.share({ files: [backupFile], title: 'Skuddkart – sikkerhetskopi' });
+      markBackupDone();
+      showToast('Kopien er delt');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;   // brukeren avbrøt
+      console.warn('Deling feilet, laster ned i stedet', err);
+    }
+  }
+
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `skuddkart-kopi-${todayIso()}.json`;
+  link.href = URL.createObjectURL(backupFile);
+  link.download = name;
   link.click();
-  URL.revokeObjectURL(link.href);
-  renderLastBackup();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  markBackupDone();
   showToast('Kopien er lagret i Nedlastinger');
 }
+
+function markBackupDone() {
+  data.lastBackupAt = Date.now();
+  saveData();
+  renderLastBackup();
+}
+
+// Kjører appen som fullskjerm-app fra hjemskjermen?
+function isInstalledApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+// Tom app åpnet fra hjemskjermen: vis hvordan data hentes fra Safari.
+function renderMoveTip() {
+  const empty = data.teams.every((t) => !t.players.length && !t.matches.length);
+  $('move-tip').hidden = !(isInstalledApp() && empty);
+}
+
+$('btn-move-import').addEventListener('click', () => $('input-import').click());
+$('btn-move-close').addEventListener('click', () => { $('move-tip').hidden = true; });
 
 $('btn-export').addEventListener('click', exportBackup);
 
@@ -2243,12 +2279,20 @@ $('btn-reset').addEventListener('click', async () => {
 
 // ---------- Start appen ----------
 
+// Offline-støtte: registrer service worker (sw.js) når nettleseren støtter det
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((err) => console.warn("Service worker:", err));
+  });
+}
+
 buildRegistrationCourt();
 buildCourt($('stats-court'), 'stats', false);
 svgEl('g', { id: 'stats-court-layer' }, $('stats-court'));
 
 function renderAll() {
   renderLastBackup();
+  renderMoveTip();
   renderTeam();
   renderTeamList();
   renderPlayers();

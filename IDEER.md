@@ -29,6 +29,13 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
       - Påminnelse om sikkerhetskopi når en kamp avsluttes
       - Arkivere og hente fram lag; slette lag er alltid tilgjengelig
 
+- [x] Versjon 0.9.1–0.9.3:
+      - «V. bak / Midt bak / H. bak» på banen
+      - «Del / PDF» og brukerveiledning (?-knappen)
+      - Nytt, moderne utseende med ikoner
+      - Fullskjerm-app på iPhone (legg til på hjemskjerm), virker uten nett
+      - Sikkerhetskopi via del-arket på mobil
+
 ## Versjon 1.0
 - **Pauseanalyse:** kort oppsummering i klartekst ved «Slutt 1. omgang» – hvem scorer
   mye og hvorfra, hva keeper bør følge med på, hva vi bør justere. Bare funn med nok
