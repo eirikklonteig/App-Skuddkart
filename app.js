@@ -725,10 +725,17 @@ function renderMatch() {
   }
 }
 
+// Tre bokstaver for kamplinja: «Tune J14» → «TUN», «Sarpsborg» → «SAR».
+function shortName(name) {
+  return (name || '').trim().split(/\s+/)[0].slice(0, 3).toUpperCase() || '—';
+}
+
 function renderScoreboard(match) {
   const score = matchScore(match);
-  $('sb-us-name').textContent = team().name || 'Vi';
-  $('sb-them-name').textContent = match.opponent;
+  $('sb-us-name').textContent = shortName(teamName());
+  $('sb-us-name').title = teamName();
+  $('sb-them-name').textContent = shortName(match.opponent);
+  $('sb-them-name').title = match.opponent;
   $('sb-us').textContent = score.us;
   $('sb-them').textContent = score.them;
 }
@@ -2116,20 +2123,35 @@ function printReport() {
   report.replaceChildren();
 
   const single = statsMatchId === 'all' ? null : statsMatches()[0];
-  const head = el('header', 'print-head');
-  head.append(el('h1', '', `Skuddkart · ${teamName()}`));
+
+  // Grønt topp-felt: lag, motstander og resultat (hjemmelaget først)
+  const band = el('header', 'pr-band');
+  const top = el('div', 'pr-top');
+  const logo = el('span', 'pr-logo');
+  logo.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#fff"/>' +
+    '<path d="M15 46V20h34v26" fill="none" stroke="#00965E" stroke-width="4.5" stroke-linejoin="round"/>' +
+    '<circle cx="40" cy="29" r="5.5" fill="#BE312F" stroke="#fff" stroke-width="2.2"/></svg>';
+  top.append(logo, el('span', 'pr-kicker', 'Kamprapport · Skuddkart'), el('span', 'pr-team', teamName()));
+
+  const main = el('div', 'pr-main');
+  const titleBox = el('div', 'pr-titlebox');
+  const meta = [];
+  if (single) {
+    meta.push(formatDate(single.date), single.home ? 'Hjemme' : 'Borte');
+    titleBox.append(el('h1', 'pr-title', matchTitle(single)));
+  } else {
+    titleBox.append(el('h1', 'pr-title', `Alle kamper (${team().matches.length})`));
+  }
+  meta.push(statsHalf === 'all' ? 'Hele kampen' : `${statsHalf}. omgang`);
+  if (single) meta.push(`2 × ${single.halfLength} min`);
+  titleBox.append(el('p', 'pr-meta', meta.join(' · ')));
+  main.append(titleBox);
   if (single) {
     const s = matchScore(single);
-    head.append(el('p', 'print-title', `${teamName()} ${s.us} – ${s.them} ${single.opponent}`));
-  } else {
-    head.append(el('p', 'print-title', `Alle kamper (${team().matches.length})`));
+    main.append(el('p', 'pr-score', single.home ? `${s.us} – ${s.them}` : `${s.them} – ${s.us}`));
   }
-  const meta = [];
-  if (single) meta.push(formatDate(single.date), single.home ? 'Hjemme' : 'Borte');
-  meta.push(statsHalf === 'all' ? 'Hele kampen' : `${statsHalf}. omgang`);
-  meta.push('Laget ' + new Date().toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' }));
-  head.append(el('p', 'print-meta', meta.join(' · ')));
-  report.append(head);
+  band.append(top, main);
+  report.append(band);
 
   // Lag én del for våre skudd og én for keeper/forsvar
   const shownSide = statsSide;
@@ -2137,7 +2159,9 @@ function printReport() {
     statsSide = side;
     renderStats();
     const section = el('section', 'print-section' + (side === 'them' ? ' stats-them' : ''));
-    section.append(el('h2', '', side === 'us' ? 'Våre skudd' : 'Keeper og forsvar'));
+    const heading = el('h2', 'pr-section');
+    heading.append(el('span', 'pr-dot ' + side), document.createTextNode(side === 'us' ? 'Våre skudd' : 'Keeper og forsvar'));
+    section.append(heading);
     if ($('stats-content').hidden) {
       section.append(el('p', 'muted', 'Ingen skudd registrert.'));
     } else {
@@ -2153,6 +2177,14 @@ function printReport() {
   });
   statsSide = shownSide;
   renderStats();
+
+  // Bunntekst
+  const foot = el('footer', 'pr-foot');
+  foot.append(
+    el('span', '', 'Laget med Skuddkart · skuddkart.vercel.app'),
+    el('span', '', 'Utskrevet ' + new Date().toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' }))
+  );
+  report.append(foot);
 
   window.print();
 }

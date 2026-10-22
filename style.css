@@ -44,6 +44,13 @@ b, strong { font-weight: 600; }
 h2 { font-size: 1.75rem; font-weight: 650; letter-spacing: -.02em; }
 h3 { font-size: 1.05rem; font-weight: 600; }
 
+/* Tall i sportsskrift: klokke, resultat, nøkkeltall og draktnummer */
+.clock-time, .mb-goals, .mb-name, .kpi-value, .shirt, .pbtn b, .match-score,
+.stat-zone b, .finished-score, .pr-score {
+  font-family: "Barlow Condensed", -apple-system, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
 /* Ikoner fra ikonsettet i index.html */
 .icon {
   width: 20px;
@@ -332,7 +339,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
-  font-size: 1.3rem;
+  font-size: 1.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -455,7 +462,8 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   opacity: .85;
 }
 .mb-name-us { text-align: right; }
-.mb-goals { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mb-name { font-size: 1rem; font-weight: 500; letter-spacing: .04em; opacity: 1; color: #c9d3ce; }
+.mb-goals { font-size: 1.9rem; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mb-goals .us { color: #5fd3a4; }
 .mb-goals .them { color: #f08a88; }
 .mb-clock {
@@ -473,7 +481,7 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   cursor: pointer;
 }
 .mb-clock:hover { background: rgba(255, 255, 255, .12); }
-.clock-time { font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.clock-time { font-size: 1.5rem; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
 .clock-time.ended { color: #f5c66b; }
 .clock-half { font-size: .68rem; opacity: .75; }
 
@@ -542,7 +550,7 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   transition: background .12s, transform .08s;
 }
 .pbtn:active { transform: scale(.95); }
-.pbtn b { font-size: 1rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pbtn b { font-size: 1.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .pbtn small {
   max-width: 100%;
   overflow: hidden;
@@ -985,7 +993,7 @@ select {
   padding: 14px 16px;
 }
 .kpi-label { margin: 0; font-size: .75rem; font-weight: 600; color: var(--muted); }
-.kpi-value { margin: 4px 0 0; font-size: 1.9rem; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.kpi-value { margin: 4px 0 0; font-size: 2.5rem; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .kpi-sub { margin: 4px 0 0; font-size: .75rem; color: var(--muted); }
 /* Hovedtallet: fylt med lagets farge */
 .kpi-main { background: var(--green); color: #fff; box-shadow: 0 6px 18px rgba(0, 150, 94, .25); }
@@ -1010,7 +1018,7 @@ select {
   text-align: center;
   line-height: 1.15;
 }
-.stat-zone b { font-size: 1rem; color: var(--text); }
+.stat-zone b { font-size: 1.15rem; color: var(--text); }
 .stat-zone small { font-size: .72rem; color: var(--text); opacity: .8; }
 
 /* Banekart i statistikken */
@@ -1057,10 +1065,37 @@ select {
 
 /* ---------- PDF-rapport (utskrift) ---------- */
 .print-report { display: none; }
-.print-head h1 { margin: 0; font-size: 1.1rem; color: var(--green-dark); }
-.print-title { margin: 4px 0 0; font-size: 1.4rem; font-weight: 600; }
-.print-meta { margin: 2px 0 12px; color: var(--muted); font-size: .85rem; }
-.print-section > h2 { margin: 18px 0 4px; font-size: 1.2rem; }
+.pr-band {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 26px;
+  border-radius: 14px;
+  background: var(--green);
+  color: #fff;
+}
+.pr-top { display: flex; align-items: center; gap: 10px; }
+.pr-logo svg { display: block; width: 28px; height: 28px; }
+.pr-kicker { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.pr-team { margin-left: auto; font-size: 12px; color: #e3f4ec; }
+.pr-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.pr-titlebox { display: flex; flex-direction: column; gap: 4px; }
+.pr-title { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.1; }
+.pr-meta { margin: 0; font-size: 13px; color: #e3f4ec; }
+.pr-score { margin: 0; font-size: 64px; font-weight: 600; line-height: .9; white-space: nowrap; }
+.pr-section { display: flex; align-items: center; gap: 8px; margin: 22px 0 6px; font-size: 18px; font-weight: 600; }
+.pr-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+.pr-dot.them { background: var(--red); }
+.pr-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
 
 @media print {
   @page { size: A4; margin: 12mm; }
@@ -1068,8 +1103,10 @@ select {
   body { background: #fff; padding: 0; font-size: 11pt; }
   body > *:not(.print-report) { display: none !important; }
   .print-report { display: block; }
-  .print-section + .print-section { break-before: page; }
-  .print-report .card, .print-report .kpi { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
+  .pr-band { break-inside: avoid; }
+  .print-report .card, .print-report .kpi { box-shadow: none; border: 1px solid var(--border); border-radius: 12px; break-inside: avoid; }
+  .print-report .kpi-main { border: 0; }
+  .print-report .card { margin-top: 12px; padding: 14px 16px; }
   .print-report .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .print-report .stats-maps { grid-template-columns: 1fr 1fr; }
   .print-report .table-wrap { overflow: visible; }
