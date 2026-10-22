@@ -39,9 +39,10 @@ body {
   padding-bottom: calc(var(--tabbar-height) + 16px + env(safe-area-inset-bottom));
 }
 
-h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.01em; }
-h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; }
-h3 { font-size: 1.05rem; font-weight: 700; }
+h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: -.01em; font-weight: 600; }
+b, strong { font-weight: 600; }
+h2 { font-size: 1.75rem; font-weight: 650; letter-spacing: -.02em; }
+h3 { font-size: 1.05rem; font-weight: 600; }
 
 /* Ikoner fra ikonsettet i index.html */
 .icon {
@@ -70,7 +71,7 @@ h3 { font-size: 1.05rem; font-weight: 700; }
   border-bottom: 1px solid rgba(16, 26, 22, .06);
 }
 .logo { width: 36px; height: 36px; border-radius: 10px; }
-.topbar h1 { font-size: 1.05rem; font-weight: 800; }
+.topbar h1 { font-size: 1.05rem; font-weight: 650; }
 
 /* Rund ikonknapp (for eksempel ? i toppfeltet) */
 .icon-btn {
@@ -108,7 +109,7 @@ main {
 .field > span, .field > legend {
   display: block;
   font-size: .85rem;
-  font-weight: 600;
+  font-weight: 550;
   color: var(--muted);
   margin-bottom: 6px;
   padding: 0;
@@ -148,7 +149,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   padding: 9px 8px;
   border-radius: 10px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 550;
   color: var(--muted);
   transition: background .15s, color .15s;
 }
@@ -170,7 +171,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition: background .15s, transform .08s, box-shadow .15s;
@@ -205,7 +206,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   background: var(--surface-2);
   font: inherit;
   font-size: .9rem;
-  font-weight: 600;
+  font-weight: 550;
   color: var(--text);
   cursor: pointer;
 }
@@ -220,7 +221,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   gap: 8px;
   margin: 26px 4px 8px;
   font-size: .78rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .6px;
   color: var(--muted);
@@ -266,11 +267,11 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   border-radius: 50%;
   background: var(--green);
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .shirt.keeper { background: var(--text); }
-.player-name { flex: 1; font-weight: 600; }
+.player-name { flex: 1; font-weight: 550; }
 .chevron { display: flex; color: #a3aea8; }
 .chevron .icon { width: 18px; height: 18px; }
 
@@ -326,13 +327,13 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
 .match-row:hover { box-shadow: var(--shadow-lift); }
 .match-row:active { transform: scale(.985); }
 .match-date { font-size: .8rem; color: var(--muted); }
-.match-title { font-weight: 700; font-size: 1.02rem; grid-column: 1; }
+.match-title { font-weight: 600; font-size: 1.02rem; grid-column: 1; }
 .match-score {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
   font-size: 1.3rem;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .status {
@@ -341,7 +342,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   padding: 2px 8px;
   border-radius: 999px;
   font-size: .7rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .2px;
   vertical-align: 1px;
 }
@@ -360,7 +361,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   background: var(--green-soft);
   font: inherit;
   font-size: .8rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--green-dark);
   cursor: pointer;
 }
@@ -382,7 +383,7 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
   cursor: pointer;
   padding: 8px 0;
   font-size: .9rem;
-  font-weight: 600;
+  font-weight: 550;
   color: var(--muted);
 }
 .archived-teams .team-row { opacity: .8; }
@@ -454,7 +455,7 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   opacity: .85;
 }
 .mb-name-us { text-align: right; }
-.mb-goals { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mb-goals { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mb-goals .us { color: #5fd3a4; }
 .mb-goals .them { color: #f08a88; }
 .mb-clock {
@@ -472,7 +473,7 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   cursor: pointer;
 }
 .mb-clock:hover { background: rgba(255, 255, 255, .12); }
-.clock-time { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clock-time { font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .clock-time.ended { color: #f5c66b; }
 .clock-half { font-size: .68rem; opacity: .75; }
 
@@ -517,7 +518,7 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   grid-column: 1 / -1;
   margin: 4px 0 0;
   font-size: .62rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .5px;
   text-transform: uppercase;
   color: var(--muted);
@@ -630,7 +631,7 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
 .court-goal-area { fill: #c3d8cb; stroke: #fff; stroke-width: 1.6; pointer-events: none; }
 .court-text {
   font-size: 8px;
-  font-weight: 600;
+  font-weight: 550;
   fill: var(--muted);
   text-anchor: middle;
   pointer-events: none;
@@ -645,13 +646,13 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   margin-top: 6px;
   min-height: 32px;
   font-size: .8rem;
-  font-weight: 600;
+  font-weight: 550;
 }
 .reg-summary .placeholder { font-weight: 400; color: var(--muted); }
 
 /* Mål | Redning | Utenfor */
 .result-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
-.btn-result { min-height: 48px; padding: 0 4px; font-size: .95rem; font-weight: 700; color: #fff; white-space: normal; line-height: 1.1; }
+.btn-result { min-height: 48px; padding: 0 4px; font-size: .95rem; font-weight: 600; color: #fff; white-space: normal; line-height: 1.1; }
 .btn-goal { background: var(--green); box-shadow: 0 4px 12px rgba(0, 150, 94, .25); }
 .side-them .btn-goal { background: var(--red); box-shadow: 0 4px 12px rgba(190, 49, 47, .25); }
 .btn-save { background: #1e2823; }
@@ -695,18 +696,18 @@ body.in-match main { max-width: 760px; padding: 8px 8px 16px; }
   padding: 5px 9px;
   font: inherit;
   font-size: .85rem;
-  font-weight: 600;
+  font-weight: 550;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   color: var(--text);
 }
 .tl-main { min-width: 0; border-left: 3px solid var(--green); padding-left: 10px; border-radius: 1px; }
 .tl-item.them .tl-main { border-left-color: var(--red); }
-.tl-who { font-weight: 600; font-size: .95rem; }
+.tl-who { font-weight: 550; font-size: .95rem; }
 .tl-detail { font-size: .8rem; color: var(--muted); }
 .badge {
   font-size: .75rem;
-  font-weight: 700;
+  font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
   white-space: nowrap;
@@ -760,7 +761,7 @@ dialog::backdrop {
 /* Kamptropp: avkrysning av spillere */
 .squad-count { font-weight: 400; color: var(--muted); font-size: .85rem; }
 .squad-tools { display: flex; gap: 14px; margin-bottom: 6px; }
-.link-btn { border: 0; background: none; padding: 4px 0; font: inherit; font-size: .85rem; font-weight: 600; color: var(--green-dark); cursor: pointer; }
+.link-btn { border: 0; background: none; padding: 4px 0; font: inherit; font-size: .85rem; font-weight: 550; color: var(--green-dark); cursor: pointer; }
 .squad-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
 .squad-row {
   display: flex;
@@ -791,7 +792,7 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   border-radius: 8px;
   background: var(--red-soft);
   color: var(--red);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 /* ---------- Menyen ---------- */
@@ -818,7 +819,7 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   background: none;
   font: inherit;
   font-size: .72rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--muted);
   cursor: pointer;
 }
@@ -887,7 +888,7 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   padding: 4px 10px;
   border-radius: 999px;
   font-size: .8rem;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   background: var(--green-soft);
   color: var(--green-dark);
@@ -900,7 +901,7 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
 .tl-half {
   margin: 14px 0 2px;
   font-size: .72rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .5px;
   text-transform: uppercase;
   color: var(--muted);
@@ -921,8 +922,8 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   color: var(--text);
   cursor: pointer;
 }
-.tl-halfend-label { font-weight: 700; font-variant-numeric: tabular-nums; }
-.tl-halfend-link { font-size: .85rem; color: var(--green-dark); font-weight: 600; }
+.tl-halfend-label { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-halfend-link { font-size: .85rem; color: var(--green-dark); font-weight: 550; }
 .ask-half { margin-bottom: 10px; }
 
 /* Hendelser i tidslinjen */
@@ -940,8 +941,8 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
   border-left: 4px solid var(--green);
   padding: 16px;
 }
-.finished-title { margin: 0; font-weight: 700; }
-.finished-score { margin: 2px 0 8px; font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.finished-title { margin: 0; font-weight: 600; }
+.finished-score { margin: 2px 0 8px; font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .mb-play:disabled { opacity: .35; cursor: not-allowed; }
 
 /* =========================================================
@@ -965,7 +966,7 @@ select {
 .stats-side label:last-child input:checked + span { background: var(--red); color: #fff; }
 
 .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.stats-head-title { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.stats-head-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
 .stats-head .muted { margin: 0; font-size: .85rem; }
 #stats-empty { margin-top: 16px; }
 
@@ -983,8 +984,8 @@ select {
   box-shadow: var(--shadow);
   padding: 14px 16px;
 }
-.kpi-label { margin: 0; font-size: .75rem; font-weight: 650; color: var(--muted); }
-.kpi-value { margin: 4px 0 0; font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.kpi-label { margin: 0; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.kpi-value { margin: 4px 0 0; font-size: 1.9rem; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .kpi-sub { margin: 4px 0 0; font-size: .75rem; color: var(--muted); }
 /* Hovedtallet: fylt med lagets farge */
 .kpi-main { background: var(--green); color: #fff; box-shadow: 0 6px 18px rgba(0, 150, 94, .25); }
@@ -1017,7 +1018,7 @@ select {
 .court-static .area:hover { fill: inherit; }
 .stat-text {
   font-size: 7px;
-  font-weight: 700;
+  font-weight: 600;
   fill: var(--text);
   text-anchor: middle;
   pointer-events: none;
@@ -1025,7 +1026,7 @@ select {
   stroke: rgba(255, 255, 255, .85);
   stroke-width: 2px;
 }
-.stat-text.name { font-weight: 600; fill: var(--muted); font-size: 6px; }
+.stat-text.name { font-weight: 550; fill: var(--muted); font-size: 6px; }
 .dot-goal { fill: var(--green); stroke: #fff; stroke-width: 1; }
 .stats-them .dot-goal { fill: var(--red); }
 .dot-save { fill: var(--text); stroke: #fff; stroke-width: 1; }
@@ -1041,14 +1042,14 @@ select {
 .stats-table th:first-child, .stats-table td:first-child { text-align: left; white-space: normal; }
 .stats-table th { font-size: .72rem; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); border-bottom: 1px solid var(--border); }
 .stats-table tbody tr + tr td { border-top: 1px solid var(--border); }
-.stats-table tfoot td { border-top: 2px solid var(--border); font-weight: 700; }
-.stats-table .num { display: inline-block; min-width: 26px; font-weight: 700; }
+.stats-table tfoot td { border-top: 2px solid var(--border); font-weight: 600; }
+.stats-table .num { display: inline-block; min-width: 26px; font-weight: 600; }
 
 /* ---------- ?-knapp og brukerveiledning ---------- */
 .guide details { border-top: 1px solid var(--border); }
 .guide summary {
   padding: 12px 0;
-  font-weight: 600;
+  font-weight: 550;
   cursor: pointer;
 }
 .guide ul { margin: 0 0 14px; padding-left: 20px; }
@@ -1057,7 +1058,7 @@ select {
 /* ---------- PDF-rapport (utskrift) ---------- */
 .print-report { display: none; }
 .print-head h1 { margin: 0; font-size: 1.1rem; color: var(--green-dark); }
-.print-title { margin: 4px 0 0; font-size: 1.4rem; font-weight: 700; }
+.print-title { margin: 4px 0 0; font-size: 1.4rem; font-weight: 600; }
 .print-meta { margin: 2px 0 12px; color: var(--muted); font-size: .85rem; }
 .print-section > h2 { margin: 18px 0 4px; font-size: 1.2rem; }
 
@@ -1086,7 +1087,7 @@ select {
   border-radius: 14px;
   background: rgba(20, 28, 24, .94);
   color: #fff;
-  font-weight: 600;
+  font-weight: 550;
   box-shadow: var(--shadow-lift);
 }
 body.in-match .toast { bottom: 16px; }
