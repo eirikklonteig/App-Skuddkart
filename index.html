@@ -427,7 +427,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 0.9.4</p>
+      <p class="muted small">Skuddkart versjon 1.0</p>
     </section>
   </main>
 
@@ -576,10 +576,24 @@
     </form>
   </dialog>
 
+  <!-- Pauseanalyse: korte funn i klartekst -->
+  <dialog id="analysis-dialog" class="analysis-dialog">
+    <h3 id="analysis-title">Pauseanalyse</h3>
+    <p class="analysis-score" id="analysis-score"></p>
+    <div id="analysis-body"></div>
+    <p class="muted analysis-note">Funnene bygger på minst 3 skudd. Med få skudd kan tilfeldigheter spille inn.</p>
+    <div class="btn-row end">
+      <button type="button" class="btn btn-secondary" id="btn-analysis-stats">Se statistikk</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary" id="btn-analysis-close">Lukk</button>
+    </div>
+  </dialog>
+
   <!-- Kampmeny -->
   <dialog id="match-menu">
     <h3 id="menu-title">Kamp</h3>
     <div class="menu-list">
+      <button type="button" class="btn btn-secondary" id="btn-menu-analysis">Analyse 1. omgang</button>
       <button type="button" class="btn btn-secondary" id="btn-menu-stats">Statistikk for kampen</button>
       <button type="button" class="btn btn-secondary" id="btn-half">Avslutt 1. omgang</button>
       <button type="button" class="btn btn-secondary" id="btn-reopen-half" hidden>Gjenåpne 1. omgang</button>

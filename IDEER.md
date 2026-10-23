@@ -37,9 +37,10 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
       - Sikkerhetskopi via del-arket på mobil
 
 ## Versjon 1.0
-- **Pauseanalyse:** kort oppsummering i klartekst ved «Slutt 1. omgang» – hvem scorer
-  mye og hvorfra, hva keeper bør følge med på, hva vi bør justere. Bare funn med nok
-  skudd bak (f.eks. minst 3).
+- [x] **Pauseanalyse:** kort oppsummering i klartekst ved «Slutt 1. omgang» – hvem scorer
+  mye og hvorfra, hva keeper bør følge med på, hva vi bør justere. Bare funn med minst
+  3 skudd bak. Også som «Kampanalyse» for hele kampen (versjon 1.0).
+- [x] Automatisk kolon i tidsfelt (0345 → 03:45) (versjon 0.9.4)
 - [x] **Dele statistikk:** «Del / PDF» på statistikksiden (versjon 0.9.2)
 
 ## Versjon 2.0 – brukere og lagring på nett
