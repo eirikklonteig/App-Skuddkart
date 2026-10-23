@@ -221,10 +221,19 @@ function ask({ title, message = '', okText = 'OK', danger = false, input = null,
     field.placeholder = input.placeholder || '';
     field.inputMode = input.inputMode || 'text';
   }
+  // Tidsfelt: tallastaturet på mobil har ikke kolon, så det settes inn automatisk
+  field.oninput = input && input.time ? formatTimeInput : null;
+  field.maxLength = input && input.time ? 5 : 524288;
 
   $('ask-dialog').showModal();
   if (input) { field.focus(); field.select(); }
   return new Promise((resolve) => { askResolve = resolve; });
+}
+
+// Gjør «0345» om til «03:45» mens man skriver (kolon etter de to første tallene).
+function formatTimeInput(event) {
+  const digits = event.target.value.replace(/\D/g, '').slice(0, 4);
+  event.target.value = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
 }
 
 function closeAsk(answer) {
@@ -835,9 +844,9 @@ $('btn-set-clock').addEventListener('click', async () => {
   if (match.finished || match.clock.halfEnded) return;
   const answer = await ask({
     title: 'Still klokka',
-    message: `Skriv tiden i ${match.clock.half}. omgang som mm:ss (maks ${formatClock(match.halfLength * 60)}).`,
+    message: `Skriv tiden i ${match.clock.half}. omgang med fire tall, for eksempel 0345 for 03:45 (maks ${formatClock(match.halfLength * 60)}).`,
     okText: 'Still klokka',
-    input: { value: formatClock(Math.floor(clockMs(match) / 1000)), inputMode: 'numeric' }
+    input: { value: formatClock(Math.floor(clockMs(match) / 1000)), inputMode: 'numeric', time: true }
   });
   if (answer === null) return;
   const sec = parseClock(answer, match);
@@ -851,7 +860,10 @@ $('btn-set-clock').addEventListener('click', async () => {
 
 // Leser «mm:ss» (eller «mm.ss») og sjekker at det er innenfor en omgang.
 function parseClock(text, match) {
-  const parts = String(text).trim().match(/^(\d{1,2})[:.,]([0-5]\d)$/);
+  let value = String(text).trim();
+  // Bare tall (for eksempel 345 eller 0345): de to siste er sekunder
+  if (/^\d{3,4}$/.test(value)) value = value.slice(0, -2) + ':' + value.slice(-2);
+  const parts = value.match(/^(\d{1,2})[:.,]([0-5]\d)$/);
   if (!parts) {
     showToast('Skriv tiden som mm:ss, f.eks. 14:20');
     return null;
@@ -1579,10 +1591,10 @@ async function editShotTime(item) {
   const match = currentMatch();
   const answer = await ask({
     title: 'Når skjedde det?',
-    message: `Velg omgang og skriv tiden som mm:ss (0–${match.halfLength} min).`,
+    message: `Velg omgang og skriv tiden med fire tall, for eksempel 0345 for 03:45 (0–${match.halfLength} min).`,
     okText: 'Lagre',
     half: item.half,
-    input: { value: formatClock(item.sec), inputMode: 'numeric' }
+    input: { value: formatClock(item.sec), inputMode: 'numeric', time: true }
   });
   if (answer === null) return;
   const sec = parseClock(answer.text, match);
