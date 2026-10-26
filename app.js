@@ -85,6 +85,7 @@ function loadData() {
 function saveData() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    scheduleSync();
   } catch (err) {
     console.error('Kunne ikke lagre', err);
     showToast('Klarte ikke å lagre. Ta en sikkerhetskopi under «Mer».');
@@ -92,6 +93,28 @@ function saveData() {
 }
 
 let data = loadData();
+
+// Innlogging og synkronisering (se «LAGRING PÅ NETT» lenger ned)
+const SESSION_KEY = 'skuddkart-session';
+const SYNC_KEY = 'skuddkart-sync';
+let session = readJson(SESSION_KEY);   // { access_token, refresh_token, expires_at, email }
+let cloudRole = null;                  // { admin, teams: [lag-id-er] }
+let syncState = readJson(SYNC_KEY) || { snap: {}, tombs: [], lastSyncAt: null };
+let syncing = false;
+let syncTimer = null;
+
+function readJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch (err) { return null; }
+}
+
+function writeJson(key, value) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn('Kunne ikke lagre', key, err);
+  }
+}
 
 // Laget som vises nå.
 function team() {
@@ -294,6 +317,10 @@ function renderTeam() {
   $('team-heading').textContent = teamName();
   $('input-team-name').value = team().name;
   $('input-team-half').value = team().halfLength;
+  const isAdmin = !!(session && cloudRole && cloudRole.admin);
+  $('btn-cloud-team').hidden = !isAdmin || !!team().cloud;
+  $('team-cloud-text').hidden = !team().cloud;
+  $('team-cloud-text').textContent = '☁ Laget lagres på nett og synkroniseres automatisk.';
   const archived = !!team().archived;
   $('btn-archive-team').textContent = archived ? 'Hent fram laget' : 'Arkiver laget';
   $('team-admin-text').textContent = archived
@@ -320,6 +347,7 @@ function fillTeamRows(list, teams) {
     row.type = 'button';
     const meta = el('span', 'match-date', `${t.players.length} spillere · ${t.matches.length} kamper`);
     if (t.archived) meta.append(el('span', 'status status-archived', 'Arkivert'));
+    if (t.cloud) meta.append(el('span', 'status status-cloud', 'På nett'));
     if (active) meta.append(el('span', 'status status-done', 'Valgt'));
     row.append(meta, el('span', 'match-score', active ? '✓' : '›'), el('span', 'match-title', teamName(t)));
     row.addEventListener('click', () => selectTeam(t.id));
@@ -430,6 +458,7 @@ $('btn-delete-team').addEventListener('click', async () => {
     okText: 'Slett laget', danger: true
   });
   if (!ok) return;
+  if (t.cloud) syncState.tombs.push({ kind: 't', id: t.id });
   data.teams = data.teams.filter((x) => x.id !== t.id);
   // Appen trenger minst ett lag. Var dette det siste, lages et tomt lag.
   if (!data.teams.length) data.teams.push(newTeam('Mitt lag'));
@@ -561,6 +590,7 @@ playerForm.addEventListener('submit', (event) => {
     showToast(`${name} er lagt til`);
   }
 
+  if (team().cloud) shortenNames(team());
   saveData();
   renderPlayers();
   playerDialog.close();
@@ -1055,6 +1085,7 @@ $('btn-delete-match').addEventListener('click', async () => {
     okText: 'Slett kamp', danger: true
   });
   if (!ok) return;
+  if (team().cloud) syncState.tombs.push({ kind: 'm', id: match.id });
   team().matches = team().matches.filter((m) => m.id !== match.id);
   currentMatchId = null;
   saveData();
@@ -2398,6 +2429,393 @@ $('btn-help').addEventListener('click', () => {
 });
 
 // =========================================================
+// LAGRING PÅ NETT (Supabase)
+// =========================================================
+//
+// Lag som er «lagret på nett» synkroniseres med klubbens database.
+// Appen virker som før uten nett; endringer sendes når nettet er tilbake.
+// Innlogging skjer med en 6-sifret kode på e-post (ingen passord).
+// Tilgangen styres av databasen: en trener ser bare sine lag.
+
+const SUPABASE_URL = 'https://hdhnilknlbnzzxkckszs.supabase.co';
+// Offentlig nøkkel – laget for å ligge i appen. Tilgangsreglene ligger i databasen.
+const SUPABASE_KEY = 'sb_publishable_NfSLBC4relSEya0QDU9XpA_fDXcOsU7';
+
+// ---------- Innlogging ----------
+
+async function authCall(pathAndQuery, body, token) {
+  const headers = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/${pathAndQuery}`, {
+    method: 'POST', headers, body: JSON.stringify(body || {})
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(json.msg || json.error_description || json.message || `Feil ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return json;
+}
+
+function storeSession(json) {
+  session = {
+    access_token: json.access_token,
+    refresh_token: json.refresh_token,
+    expires_at: Date.now() + (json.expires_in || 3600) * 1000,
+    email: ((json.user && json.user.email) || (session && session.email) || '').toLowerCase()
+  };
+  writeJson(SESSION_KEY, session);
+}
+
+// Gyldig tilgangsbillett; fornyes automatisk når den snart går ut
+async function validToken() {
+  if (!session) return null;
+  if (Date.now() < session.expires_at - 60000) return session.access_token;
+  try {
+    storeSession(await authCall('token?grant_type=refresh_token', { refresh_token: session.refresh_token }));
+    return session.access_token;
+  } catch (err) {
+    if (err.status) {   // avvist av Supabase (ikke bare manglende nett)
+      logoutLocal();
+      showToast('Innloggingen har gått ut. Logg inn på nytt under «Mer».');
+    }
+    return null;
+  }
+}
+
+function logoutLocal() {
+  session = null;
+  cloudRole = null;
+  writeJson(SESSION_KEY, null);
+  renderCloud();
+  renderTeam();
+}
+
+let loginEmail = '';
+
+async function sendCode() {
+  const email = $('cloud-email').value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showToast('Skriv en gyldig e-postadresse');
+  $('btn-send-code').disabled = true;
+  try {
+    await authCall('otp', { email, create_user: true });
+    loginEmail = email;
+    $('cloud-code-step').hidden = false;
+    $('cloud-code').value = '';
+    $('cloud-code').focus();
+    showToast('Koden er sendt. Sjekk e-posten (også søppelpost).');
+  } catch (err) {
+    showToast(err.status === 429 ? 'For mange forsøk. Vent litt og prøv igjen.' : 'Kunne ikke sende kode: ' + err.message);
+  } finally {
+    $('btn-send-code').disabled = false;
+  }
+}
+
+async function verifyCode() {
+  const token = $('cloud-code').value.replace(/\D/g, '');
+  if (token.length < 6) return showToast('Skriv inn koden fra e-posten');
+  $('btn-verify-code').disabled = true;
+  try {
+    storeSession(await authCall('verify', { type: 'email', email: loginEmail, token }));
+    $('cloud-code-step').hidden = true;
+    await loadRole();
+    renderCloud();
+    renderTeam();
+    showToast('Du er logget inn');
+    syncNow(false);
+  } catch (err) {
+    showToast('Koden virket ikke. Sjekk at den er riktig, eller be om en ny.');
+  } finally {
+    $('btn-verify-code').disabled = false;
+  }
+}
+
+$('btn-send-code').addEventListener('click', sendCode);
+$('btn-resend-code').addEventListener('click', sendCode);
+$('btn-verify-code').addEventListener('click', verifyCode);
+$('cloud-email').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendCode(); } });
+$('cloud-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); verifyCode(); } });
+
+$('btn-logout').addEventListener('click', async () => {
+  const ok = await ask({
+    title: 'Logge ut?',
+    message: 'Lagene blir liggende på denne enheten, men synkroniseres ikke før du logger inn igjen.',
+    okText: 'Logg ut'
+  });
+  if (!ok) return;
+  const token = session && session.access_token;
+  logoutLocal();
+  if (token) authCall('logout', {}, token).catch(() => {});
+  showToast('Du er logget ut');
+});
+
+// ---------- Databasen ----------
+
+async function rest(pathAndQuery, options) {
+  const { method = 'GET', body, prefer } = options || {};
+  const token = await validToken();
+  if (!token) throw new Error('Ikke logget inn');
+  const headers = { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+  if (prefer) headers.Prefer = prefer;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    method, headers, body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await res.text();
+  const json = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error((json && json.message) || `Feil ${res.status}`);
+  return json;
+}
+
+// Hvem er jeg i klubben? (administrator, eller trener for hvilke lag)
+async function loadRole() {
+  const rows = await rest('members?select=email,role,team_id');
+  const mine = rows.filter((r) => (r.email || '').toLowerCase() === session.email);
+  cloudRole = {
+    admin: mine.some((r) => r.role === 'admin'),
+    teams: mine.filter((r) => r.team_id).map((r) => r.team_id)
+  };
+}
+
+// ---------- Synkronisering ----------
+//
+// For hvert lag og hver kamp huskes hvordan de så ut sist de ble synkronisert
+// («snap»). Er noe endret lokalt, sendes det opp. Er noe endret på nett og
+// ikke lokalt, hentes det ned. Er begge endret, vinner den lokale endringen.
+
+// JSON med sorterte nøkler, så samme innhold alltid gir samme tekst
+function canon(value) {
+  if (Array.isArray(value)) return '[' + value.map(canon).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort()
+      .filter((k) => value[k] !== undefined)
+      .map((k) => JSON.stringify(k) + ':' + canon(value[k])).join(',') + '}';
+  }
+  return JSON.stringify(value === undefined ? null : value);
+}
+
+function teamDoc(t) {
+  const copy = { ...t };
+  delete copy.matches;
+  delete copy.cloud;
+  return copy;
+}
+
+const snapKey = (kind, id) => kind + ':' + id;
+const isDirty = (kind, id, obj) => syncState.snap[snapKey(kind, id)] !== canon(obj);
+
+function scheduleSync() {
+  if (!session) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncNow(false), 2500);
+}
+
+async function syncNow(manual) {
+  if (!session || syncing) return;
+  if (!navigator.onLine) {
+    if (manual) showToast('Ingen nett nå. Synkroniseres når nettet er tilbake.');
+    return;
+  }
+  syncing = true;
+  renderCloud();
+  try {
+    if (!cloudRole) await loadRole();
+    const changed = await pullFromCloud();
+    await pushToCloud();
+    syncState.lastSyncAt = Date.now();
+    syncState.lastError = null;
+    if (changed) afterRemoteChange();
+    if (manual) showToast('Synkronisert');
+  } catch (err) {
+    console.warn('Synkronisering feilet', err);
+    syncState.lastError = err.message;
+    if (manual) showToast('Synkronisering feilet: ' + err.message);
+  } finally {
+    writeJson(SYNC_KEY, syncState);
+    syncing = false;
+    renderCloud();
+  }
+}
+
+async function pullFromCloud() {
+  const teams = await rest('teams?select=id,data,deleted');
+  const matches = await rest('matches?select=id,team_id,data,deleted');
+  let changed = false;
+
+  teams.forEach((row) => {
+    const key = snapKey('t', row.id);
+    const local = data.teams.find((t) => t.id === row.id);
+    if (row.deleted) {
+      if (local) { data.teams = data.teams.filter((t) => t.id !== row.id); changed = true; }
+      delete syncState.snap[key];
+      return;
+    }
+    if (!local) {
+      const fresh = { ...row.data, id: row.id, cloud: true, matches: [] };
+      data.teams.push(fresh);
+      syncState.snap[key] = canon(teamDoc(fresh));
+      changed = true;
+      return;
+    }
+    local.cloud = true;
+    const remote = canon(row.data);
+    if (remote !== syncState.snap[key] && !isDirty('t', row.id, teamDoc(local))) {
+      const keepMatches = local.matches;
+      Object.keys(local).forEach((k) => { delete local[k]; });
+      Object.assign(local, row.data, { id: row.id, cloud: true, matches: keepMatches });
+      changed = true;
+    }
+    if (!isDirty('t', row.id, teamDoc(local)) || remote === canon(teamDoc(local))) {
+      syncState.snap[key] = canon(teamDoc(local));
+    }
+  });
+
+  matches.forEach((row) => {
+    const owner = data.teams.find((t) => t.id === row.team_id);
+    if (!owner) return;
+    const key = snapKey('m', row.id);
+    const index = owner.matches.findIndex((m) => m.id === row.id);
+    const local = index >= 0 ? owner.matches[index] : null;
+    if (row.deleted) {
+      if (local) { owner.matches.splice(index, 1); changed = true; }
+      delete syncState.snap[key];
+      return;
+    }
+    const remote = canon(row.data);
+    if (!local) {
+      owner.matches.push(row.data);
+      syncState.snap[key] = remote;
+      changed = true;
+      return;
+    }
+    if (remote !== syncState.snap[key] && !isDirty('m', row.id, local)) {
+      owner.matches[index] = row.data;
+      syncState.snap[key] = remote;
+      changed = true;
+    } else if (remote === canon(local)) {
+      syncState.snap[key] = remote;
+    }
+  });
+
+  if (!data.teams.some((t) => t.id === data.activeTeamId)) {
+    if (!data.teams.length) data.teams.push(newTeam('Mitt lag'));
+    data.activeTeamId = data.teams[0].id;
+  }
+  return changed;
+}
+
+async function pushToCloud() {
+  // Slettinger først
+  for (const tomb of [...syncState.tombs]) {
+    const table = tomb.kind === 'm' ? 'matches' : 'teams';
+    await rest(`${table}?id=eq.${encodeURIComponent(tomb.id)}`, { method: 'PATCH', body: { deleted: true } });
+    syncState.tombs = syncState.tombs.filter((t) => t !== tomb);
+    delete syncState.snap[snapKey(tomb.kind, tomb.id)];
+  }
+
+  for (const t of data.teams.filter((x) => x.cloud)) {
+    const doc = teamDoc(t);
+    if (isDirty('t', t.id, doc)) {
+      const known = syncState.snap[snapKey('t', t.id)] !== undefined;
+      if (known) {
+        await rest(`teams?id=eq.${encodeURIComponent(t.id)}`, { method: 'PATCH', body: { data: doc, archived: !!t.archived } });
+      } else {
+        await rest('teams', {
+          method: 'POST',
+          body: [{ id: t.id, data: doc, archived: !!t.archived }],
+          prefer: 'resolution=merge-duplicates,return=minimal'
+        });
+      }
+      syncState.snap[snapKey('t', t.id)] = canon(doc);
+    }
+    const dirtyMatches = t.matches.filter((m) => isDirty('m', m.id, m));
+    if (dirtyMatches.length) {
+      await rest('matches', {
+        method: 'POST',
+        body: dirtyMatches.map((m) => ({ id: m.id, team_id: t.id, data: m, deleted: false })),
+        prefer: 'resolution=merge-duplicates,return=minimal'
+      });
+      dirtyMatches.forEach((m) => { syncState.snap[snapKey('m', m.id)] = canon(m); });
+    }
+  }
+}
+
+// Noe kom ned fra nett: lagre lokalt og tegn sidene på nytt
+function afterRemoteChange() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (err) { console.warn(err); }
+  renderAll();
+  if (!$('view-match').hidden) {
+    if (currentMatch()) renderMatch();
+    else showView('matches');
+  }
+}
+
+window.addEventListener('online', () => syncNow(false));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !session) return;
+  if (!syncState.lastSyncAt || Date.now() - syncState.lastSyncAt > 30000) syncNow(false);
+});
+$('btn-sync').addEventListener('click', () => syncNow(true));
+
+// ---------- Lagre et lag på nett ----------
+
+// Bare fornavn; ved like fornavn legges forbokstav i etternavn til («Emma B.»)
+function shortenNames(t) {
+  const first = (name) => name.trim().split(/\s+/)[0];
+  const counts = {};
+  t.players.forEach((p) => { const f = first(p.name).toLowerCase(); counts[f] = (counts[f] || 0) + 1; });
+  t.players.forEach((p) => {
+    const parts = p.name.trim().split(/\s+/);
+    const f = parts[0];
+    p.name = counts[f.toLowerCase()] > 1 && parts[1] ? `${f} ${parts[1][0].toUpperCase()}.` : f;
+  });
+}
+
+$('btn-cloud-team').addEventListener('click', async () => {
+  const t = team();
+  const ok = await ask({
+    title: `Lagre ${teamName(t)} på nett?`,
+    message: 'Laget, spillerne og kampene lagres i klubbens database og blir tilgjengelige på dine andre enheter. ' +
+             'Spillernavn kortes ned til fornavn (for eksempel «Eline Berg» blir «Eline»).',
+    okText: 'Lagre på nett'
+  });
+  if (!ok) return;
+  shortenNames(t);
+  t.cloud = true;
+  saveData();
+  renderAll();
+  syncNow(true);
+});
+
+// ---------- Visning ----------
+
+function renderCloud() {
+  const loggedIn = !!session;
+  $('cloud-out').hidden = loggedIn;
+  $('cloud-in').hidden = !loggedIn;
+  $('btn-sync').disabled = syncing;
+  if (!loggedIn) return;
+
+  let role = '';
+  if (cloudRole) {
+    role = cloudRole.admin ? ' · administrator'
+      : cloudRole.teams.length ? ' · trener' : ' · ingen lag ennå';
+  }
+  $('cloud-who').textContent = `Logget inn som ${session.email}${role}`;
+
+  let status;
+  if (syncing) status = 'Synkroniserer …';
+  else if (syncState.lastError) status = 'Siste synkronisering feilet: ' + syncState.lastError;
+  else if (syncState.lastSyncAt) {
+    status = 'Sist synkronisert ' + new Date(syncState.lastSyncAt).toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' });
+  } else status = 'Ikke synkronisert ennå.';
+  if (cloudRole && !cloudRole.admin && !cloudRole.teams.length) {
+    status = 'Du har ikke tilgang til noen lag ennå. Be administrator om å legge deg til.';
+  }
+  $('cloud-status').textContent = status;
+}
+
+// =========================================================
 // SIKKERHETSKOPI
 // =========================================================
 
@@ -2501,6 +2919,8 @@ $('btn-reset').addEventListener('click', async () => {
   });
   if (!ok) return;
   data = emptyData();
+  syncState = { snap: {}, tombs: [], lastSyncAt: null };
+  writeJson(SYNC_KEY, syncState);
   saveData();
   renderAll();
   showToast('Alle data er slettet');
@@ -2530,3 +2950,9 @@ function renderAll() {
 }
 
 renderAll();
+renderCloud();
+if (session) {
+  loadRole()
+    .catch((err) => console.warn('Kunne ikke hente rolle', err))
+    .finally(() => { renderCloud(); renderTeam(); syncNow(false); });
+}

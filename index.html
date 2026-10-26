@@ -132,7 +132,9 @@
       <div class="card team-admin">
         <h3>Administrer laget</h3>
         <p class="muted" id="team-admin-text"></p>
+        <p class="team-cloud" id="team-cloud-text" hidden></p>
         <div class="btn-row">
+          <button class="btn btn-primary" id="btn-cloud-team" hidden>Lagre laget på nett</button>
           <button class="btn btn-secondary" id="btn-archive-team">Arkiver laget</button>
           <button class="btn btn-ghost-danger" id="btn-delete-team">Slett laget</button>
         </div>
@@ -421,13 +423,44 @@
         </div>
       </div>
 
+      <!-- Lagring på nett (Supabase) -->
+      <div class="card" id="cloud-card">
+        <h3>Lagring på nett</h3>
+        <div id="cloud-out">
+          <p class="muted">Logg inn for å lagre lag på nett og bruke dem på flere enheter. Du får en kode på e-post.</p>
+          <label class="field">
+            <span>E-post</span>
+            <input type="email" id="cloud-email" autocomplete="email" inputmode="email" enterkeyhint="send">
+          </label>
+          <button class="btn btn-primary" id="btn-send-code">Send kode</button>
+          <div id="cloud-code-step" hidden>
+            <label class="field cloud-code-field">
+              <span>Kode fra e-posten</span>
+              <input type="text" id="cloud-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" enterkeyhint="done">
+            </label>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="btn-verify-code">Logg inn</button>
+              <button class="btn btn-secondary" id="btn-resend-code">Send ny kode</button>
+            </div>
+          </div>
+        </div>
+        <div id="cloud-in" hidden>
+          <p class="cloud-who" id="cloud-who"></p>
+          <p class="muted" id="cloud-status"></p>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-sync">Synkroniser nå</button>
+            <button class="btn btn-secondary" id="btn-logout">Logg ut</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card card-danger">
         <h3>Slett alt</h3>
         <p class="muted">Fjerner alle spillere og kamper fra denne nettleseren.</p>
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 1.0</p>
+      <p class="muted small">Skuddkart versjon 2.0 (test)</p>
     </section>
   </main>
 
