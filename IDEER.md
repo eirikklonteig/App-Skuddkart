@@ -44,6 +44,19 @@ Ting som er bestemt å vente med. Flytt et punkt opp når det skal bygges.
 - [x] **Dele statistikk:** «Del / PDF» på statistikksiden (versjon 0.9.2)
 
 ## Versjon 2.0 – brukere og lagring på nett
+
+**Bestemt (26. okt. 2026):**
+- Innlogging med **6-sifret kode på e-post** (ingen passord; virker i hjemskjerm-appen)
+- Egne spillere lagres med **fornavn og draktnummer** (evt. forbokstav ved like navn)
+- Supabase gratisversjon, region i EU. Prosjektet pauses etter 1 uke uten bruk
+  (åpnes igjen på supabase.com); ingen automatisk backup, så «Lagre kopi» beholdes
+- Faser: 1) innlogging + opplasting, 2) synk mellom enheter + offline,
+  3) flere brukere per lag (trener ser eget lag, eier ser alt), 4) motstanderdatabase
+
+**Må ordnes før bygging:** klubbens godkjenning (personvern), Supabase-konto og prosjekt
+(Project URL + publishable/anon key – aldri service_role-nøkkel eller databasepassord),
+liste over brukere (navn, e-post, lag).
+
 - **Innlogging:** eier (admin) og én registrerende bruker per lag (evt. delt innlogging)
 - **Lagring på nett** (forslag: Supabase med data i EU), som også virker uten nett i hallen
   og synkroniserer etterpå
