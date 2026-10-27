@@ -399,7 +399,7 @@
           <summary>7. Lagring og sikkerhet</summary>
           <ul>
             <li>Alt lagres <b>bare på denne enheten</b>. Andre som åpner lenken, får en tom app og ser ikke dine data.</li>
-            <li>Ta <b>sikkerhetskopi</b> etter hver kamp (appen spør når du avslutter). Kopien kan også flytte data til en annen telefon eller PC.</li>
+            <li>Ta <b>sikkerhetskopi</b> etter hver kamp (appen tilbyr det sammen med rapporten når du avslutter). Kopien er en datafil for Skuddkart – del PDF-rapporten med andre. Kopien kan også flytte data til en annen telefon eller PC.</li>
             <li>For motstanderen lagres bare draktnummer, ikke navn.</li>
             <li><b>Legg appen på hjemskjermen</b> (iPhone): åpne skuddkart.vercel.app i Safari, trykk del-knappen og velg <b>Legg til på Hjem-skjerm</b>. Da åpnes den i fullskjerm og virker også uten nett.</li>
             <li><b>Viktig:</b> appen på hjemskjermen har <b>egne data</b>, adskilt fra Safari. Flytt dataene én gang: <b>Lagre kopi til fil</b> i Safari, og <b>Hent kopi fra fil</b> i appen.</li>
@@ -648,6 +648,7 @@
       </div>
       <input type="text" id="ask-input" autocomplete="off" enterkeyhint="done" hidden>
       <div class="btn-row end">
+        <button type="button" class="btn btn-secondary" id="ask-alt" hidden></button>
         <span class="spacer"></span>
         <button type="button" class="btn btn-secondary" id="ask-cancel">Avbryt</button>
         <button type="submit" class="btn btn-primary" id="ask-ok">OK</button>

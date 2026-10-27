@@ -224,15 +224,19 @@ function firstName(name) {
 
 //   Med half: 1 eller 2 vises også et valg av omgang, og svaret blir
 //   { text, half } eller null.
+//   Med alt: «tekst» vises en tredje knapp, og svaret blir 'alt' når den trykkes.
 
 let askResolve = null;
 
-function ask({ title, message = '', okText = 'OK', danger = false, input = null, half = null }) {
+function ask({ title, message = '', okText = 'OK', cancelText = 'Avbryt', alt = null, danger = false, input = null, half = null }) {
   $('ask-title').textContent = title;
   $('ask-message').textContent = message;
   $('ask-message').hidden = !message;
   $('ask-ok').textContent = okText;
   $('ask-ok').className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+  $('ask-cancel').textContent = cancelText;
+  $('ask-alt').hidden = !alt;
+  $('ask-alt').textContent = alt || '';
 
   $('ask-half').hidden = !half;
   if (half) $('ask-half').querySelector(`input[value="${half}"]`).checked = true;
@@ -274,6 +278,7 @@ $('ask-form').addEventListener('submit', (event) => {
   closeAsk({ text, half: Number($('ask-half').querySelector('input:checked').value) });
 });
 $('ask-cancel').addEventListener('click', () => closeAsk(null));
+$('ask-alt').addEventListener('click', () => closeAsk('alt'));
 $('ask-dialog').addEventListener('close', () => {   // Esc-tasten
   if (!$('ask-dialog').open) closeAsk(null);
 });
@@ -1041,7 +1046,7 @@ $('btn-finish').addEventListener('click', async () => {
   saveData();
   renderMatch();
   openStats(match.id);
-  offerBackup();
+  offerReport();
 });
 
 $('btn-half').addEventListener('click', async () => {
@@ -2876,14 +2881,19 @@ function renderLastBackup() {
     : 'Du har ikke tatt kopi ennå.';
 }
 
-// Etter en avsluttet kamp: tilby å ta sikkerhetskopi med en gang.
-async function offerBackup() {
-  const ok = await ask({
-    title: 'Ta sikkerhetskopi?',
-    message: 'Kampen er lagret på denne enheten. En kopi til fil sikrer dataene hvis telefonen blir borte eller nettleseren tømmes.',
-    okText: 'Lagre kopi'
+// Etter en avsluttet kamp: tilby å dele rapporten (PDF) med en gang.
+// Sikkerhetskopi (fil med alle data, ikke for deling) er et eget valg.
+async function offerReport() {
+  const answer = await ask({
+    title: 'Del kamprapport?',
+    message: 'Lag en PDF av statistikken. I utskriftsvinduet velger du «Lagre som PDF» og deler filen. ' +
+             'Sikkerhetskopi er en datafil som bare kan åpnes i Skuddkart.',
+    okText: 'Del rapport (PDF)',
+    alt: 'Ta sikkerhetskopi',
+    cancelText: 'Ikke nå'
   });
-  if (ok) exportBackup();
+  if (answer === true) printReport();
+  else if (answer === 'alt') exportBackup();
 }
 
 $('input-import').addEventListener('change', async (event) => {
