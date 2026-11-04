@@ -46,3 +46,18 @@ Den innebygde e-posten kan ikke sende til andre. Vi trenger en egen e-posttjenes
 - app-passord til e-post
 
 Disse skrives bare inn i Supabase sine egne innstillinger.
+
+## Før første trener logger inn (versjon 2.1)
+Første gang en ny e-postadresse logger inn, sender Supabase malen «Confirm sign up»,
+som inneholder en lenke og ikke en kode. Slå derfor av e-postbekreftelse:
+1. Gå til **Authentication → Sign In / Providers → Email**.
+2. Slå av **Confirm email** og trykk **Save**.
+
+Da får nye brukere den vanlige e-posten med kode. Det er trygt: bare de som
+står i tabellen `members` får se noe i appen.
+
+## Legge til en trener
+1. Logg inn i appen som administrator.
+2. Lagre laget på nett (Lag → «Lagre laget på nett»).
+3. Gå til **Mer → Brukere → Legg til bruker**, velg rolle **Trener** og laget.
+4. Treneren åpner skuddkart.vercel.app, går til Mer → Lagring på nett og logger inn med e-postadressen sin.

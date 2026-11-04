@@ -99,6 +99,7 @@ const SESSION_KEY = 'skuddkart-session';
 const SYNC_KEY = 'skuddkart-sync';
 let session = readJson(SESSION_KEY);   // { access_token, refresh_token, expires_at, email }
 let cloudRole = null;                  // { admin, teams: [lag-id-er] }
+let members = null;                    // brukerlisten (bare for administrator)
 let syncState = readJson(SYNC_KEY) || { snap: {}, tombs: [], lastSyncAt: null };
 let syncing = false;
 let syncTimer = null;
@@ -2492,6 +2493,7 @@ async function validToken() {
 function logoutLocal() {
   session = null;
   cloudRole = null;
+  members = null;
   writeJson(SESSION_KEY, null);
   renderCloud();
   renderTeam();
@@ -2640,6 +2642,7 @@ async function syncNow(manual) {
     syncing = false;
     renderCloud();
   }
+  if (cloudRole && cloudRole.admin && !members) loadMembers();
 }
 
 async function pullFromCloud() {
@@ -2799,7 +2802,7 @@ function renderCloud() {
   $('cloud-out').hidden = loggedIn;
   $('cloud-in').hidden = !loggedIn;
   $('btn-sync').disabled = syncing;
-  if (!loggedIn) return;
+  if (!loggedIn) return renderMembers();
 
   let role = '';
   if (cloudRole) {
@@ -2818,7 +2821,133 @@ function renderCloud() {
     status = 'Du har ikke tilgang til noen lag ennå. Be administrator om å legge deg til.';
   }
   $('cloud-status').textContent = status;
+  renderMembers();
 }
+
+// ---------- Brukere (administrator) ----------
+//
+// Administrator legger til trenere (ett lag hver) og andre administratorer.
+// Tilgangen styres av tabellen members i databasen; den som står der kan
+// logge inn med e-postadressen sin og får se lagene sine.
+
+async function loadMembers() {
+  try {
+    members = await rest('members?select=id,email,name,role,team_id&order=role.asc,name.asc');
+    $('members-status').hidden = true;
+  } catch (err) {
+    console.warn('Klarte ikke å hente brukere', err);
+    $('members-status').textContent = 'Klarte ikke å hente brukerne: ' + err.message;
+    $('members-status').hidden = false;
+  }
+  renderMembers();
+}
+
+function cloudTeamName(id) {
+  const t = data.teams.find((x) => x.id === id);
+  return t ? teamName(t) : 'ukjent lag';
+}
+
+function renderMembers() {
+  const isAdmin = !!(session && cloudRole && cloudRole.admin);
+  $('members-card').hidden = !isAdmin;
+  if (!isAdmin) return;
+
+  const list = $('member-list');
+  list.replaceChildren();
+  (members || []).forEach((m) => {
+    const row = el('li', 'member-row');
+    const text = el('div', 'member-text');
+    text.append(
+      el('span', 'member-name', m.name || m.email),
+      el('span', 'member-meta', (m.role === 'admin' ? 'Administrator' : 'Trener · ' + cloudTeamName(m.team_id)) + ' · ' + m.email)
+    );
+    row.append(text);
+    const isMe = m.role === 'admin' && (m.email || '').toLowerCase() === session.email;
+    if (!isMe) {
+      const remove = el('button', 'icon-btn member-remove');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Fjern ' + (m.name || m.email));
+      remove.append(icon('x'));
+      remove.addEventListener('click', () => removeMember(m));
+      row.append(remove);
+    }
+    list.append(row);
+  });
+  if (members && !members.length) list.append(el('li', 'muted', 'Ingen brukere ennå.'));
+}
+
+async function removeMember(m) {
+  const what = m.role === 'admin' ? 'administratortilgangen' : 'tilgangen til ' + cloudTeamName(m.team_id);
+  const ok = await ask({
+    title: `Fjerne ${m.name || m.email}?`,
+    message: `${m.name || m.email} mister ${what}. Kamper og statistikk blir liggende.`,
+    okText: 'Fjern',
+    danger: true
+  });
+  if (!ok) return;
+  try {
+    await rest(`members?id=eq.${encodeURIComponent(m.id)}`, { method: 'DELETE' });
+    showToast(`${m.name || m.email} er fjernet`);
+  } catch (err) {
+    showToast('Klarte ikke å fjerne: ' + err.message);
+  }
+  loadMembers();
+}
+
+function showMemberTeam() {
+  $('member-team-field').hidden = $('input-member-role').value !== 'coach';
+}
+
+$('btn-add-member').addEventListener('click', () => {
+  $('member-form').reset();
+  $('member-error').hidden = true;
+  const select = $('input-member-team');
+  select.replaceChildren();
+  data.teams.filter((t) => t.cloud && !t.archived).forEach((t) => {
+    const option = el('option', '', teamName(t));
+    option.value = t.id;
+    select.append(option);
+  });
+  showMemberTeam();
+  $('member-dialog').showModal();
+  $('input-member-name').focus();
+});
+
+$('input-member-role').addEventListener('change', showMemberTeam);
+$('btn-cancel-member').addEventListener('click', () => $('member-dialog').close());
+
+$('member-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const name = $('input-member-name').value.trim();
+  const email = $('input-member-email').value.trim().toLowerCase();
+  const role = $('input-member-role').value;
+  const teamId = role === 'coach' ? $('input-member-team').value : null;
+  const fail = (message) => {
+    $('member-error').textContent = message;
+    $('member-error').hidden = false;
+  };
+
+  if (!name) return fail('Skriv inn navn.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('Skriv inn en gyldig e-postadresse.');
+  if (role === 'coach' && !teamId) {
+    return fail('Ingen lag er lagret på nett ennå. Gå til Lag og trykk «Lagre laget på nett» først.');
+  }
+  const exists = (members || []).some((m) => (m.email || '').toLowerCase() === email &&
+    (role === 'admin' ? m.role === 'admin' : m.team_id === teamId));
+  if (exists) return fail(role === 'admin' ? 'Denne personen er allerede administrator.' : 'Denne personen har allerede tilgang til laget.');
+
+  $('btn-save-member').disabled = true;
+  try {
+    await rest('members', { method: 'POST', body: [{ email, name, role, team_id: teamId }], prefer: 'return=minimal' });
+    $('member-dialog').close();
+    showToast(`${name} er lagt til og kan logge inn med ${email}`);
+    loadMembers();
+  } catch (err) {
+    fail('Klarte ikke å lagre: ' + err.message);
+  } finally {
+    $('btn-save-member').disabled = false;
+  }
+});
 
 // =========================================================
 // SIKKERHETSKOPI

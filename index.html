@@ -454,13 +454,22 @@
         </div>
       </div>
 
+      <!-- Brukere (bare for administrator) -->
+      <div class="card" id="members-card" hidden>
+        <h3>Brukere</h3>
+        <p class="muted">Trenere logger inn med e-postadressen sin og ser bare laget sitt. Laget må være lagret på nett før en trener kan legges til.</p>
+        <ul class="member-list" id="member-list"></ul>
+        <p class="muted" id="members-status" hidden></p>
+        <button class="btn btn-primary" id="btn-add-member">Legg til bruker</button>
+      </div>
+
       <div class="card card-danger">
         <h3>Slett alt</h3>
         <p class="muted">Fjerner alle spillere og kamper fra denne nettleseren.</p>
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 2.0 (test)</p>
+      <p class="muted small">Skuddkart versjon 2.1 (test)</p>
     </section>
   </main>
 
@@ -638,6 +647,37 @@
   </dialog>
 
   <!-- Felles vindu for «Er du sikker?» og korte spørsmål -->
+  <dialog id="member-dialog">
+    <form id="member-form">
+      <h3>Ny bruker</h3>
+      <label class="field">
+        <span>Navn</span>
+        <input type="text" id="input-member-name" maxlength="60" required autocomplete="off" placeholder="F.eks. Kent Trinborg">
+      </label>
+      <label class="field">
+        <span>E-post</span>
+        <input type="email" id="input-member-email" required autocomplete="off" inputmode="email">
+      </label>
+      <label class="field">
+        <span>Rolle</span>
+        <select id="input-member-role">
+          <option value="coach">Trener (ser ett lag)</option>
+          <option value="admin">Administrator (ser alle lag og brukere)</option>
+        </select>
+      </label>
+      <label class="field" id="member-team-field">
+        <span>Lag</span>
+        <select id="input-member-team"></select>
+      </label>
+      <p class="form-error" id="member-error" hidden></p>
+      <div class="btn-row end">
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-member">Avbryt</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-member">Legg til</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="ask-dialog">
     <form id="ask-form">
       <h3 id="ask-title"></h3>
