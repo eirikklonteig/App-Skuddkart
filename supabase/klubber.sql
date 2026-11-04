@@ -141,3 +141,6 @@ create policy "members: admin endrer" on public.members
 drop policy if exists "members: admin sletter" on public.members;
 create policy "members: admin sletter" on public.members
   for delete using (public.is_admin() or (public.is_club_admin(club_id) and role = 'coach'));
+
+-- Be API-et lese inn den nye tabellen med en gang
+notify pgrst, 'reload schema';
