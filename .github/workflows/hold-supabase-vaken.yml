@@ -1,0 +1,22 @@
+# Supabase (gratisplanen) setter prosjektet på pause etter en uke uten bruk.
+# Denne jobben spør databasen to ganger i uken, så den holder seg våken.
+# Nøkkelen er den offentlige «publishable»-nøkkelen som også ligger i app.js.
+name: Hold Supabase våken
+
+on:
+  schedule:
+    - cron: '17 6 * * 1,4'   # mandag og torsdag kl. 06:17 UTC
+  workflow_dispatch:          # kan også kjøres for hånd under Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Spør databasen
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H 'apikey: sb_publishable_NfSLBC4relSEya0QDU9XpA_fDXcOsU7' \
+            'https://hdhnilknlbnzzxkckszs.supabase.co/rest/v1/clubs?select=id&limit=1')
+          echo "Svar fra Supabase: $status"
+          # 401 er riktig: uten innlogging får man ikke se noe, men databasen ble spurt.
+          if [ "$status" -ge 500 ]; then exit 1; fi

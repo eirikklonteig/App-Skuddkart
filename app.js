@@ -36,8 +36,9 @@ const AREA_7M = { id: '7m', label: '7 m-kast', short: '7 m', distance: '7m', pos
 
 // ---------- Lagring ----------
 //
-// Dataene er bygget for flere lag, selv om appen viser ett lag foreløpig:
-// { version, activeTeamId, teams: [ { id, name, halfLength, players, matches } ] }
+// Klubber med lag. Hvert lag hører til én klubb (clubId):
+// { version, activeTeamId, clubs: [ { id, name } ],
+//   teams: [ { id, clubId, name, halfLength, players, matches } ] }
 //
 // players: { id, number, name, role: 'player' | 'keeper' }
 // matches: { id, createdAt, opponent, date, home, halfLength, keeperId,
@@ -49,33 +50,56 @@ const AREA_7M = { id: '7m', label: '7 m-kast', short: '7 m', distance: '7m', pos
 // events:  { id, createdAt, side, type: 'yellow' | '2min' | 'red' | 'timeout',
 //            playerId, oppNumber, half, sec }   (matches.events, kan mangle i eldre kamper)
 
-function newTeam(name) {
-  return { id: newId(), name, halfLength: MAX_HALF, players: [], matches: [] };
+function newClub(name) {
+  return { id: newId(), name };
+}
+
+function newTeam(name, clubId) {
+  return { id: newId(), clubId, name, halfLength: MAX_HALF, players: [], matches: [] };
 }
 
 function emptyData() {
-  const team = newTeam('Tune IL');
-  return { version: 2, activeTeamId: team.id, teams: [team] };
+  const club = newClub('Min klubb');
+  const team = newTeam('Mitt lag', club.id);
+  return { version: 2, activeTeamId: team.id, clubs: [club], teams: [team] };
 }
 
 // Gjør om eldre lagrede data (versjon 1, ett lag) til dagens format.
 function migrate(raw) {
-  if (raw && Array.isArray(raw.teams) && raw.teams.length) return raw;
+  if (raw && Array.isArray(raw.teams) && raw.teams.length) return ensureClubs(raw);
   if (raw && Array.isArray(raw.players)) {
     const team = newTeam(raw.teamName || 'Mitt lag');
     team.halfLength = raw.halfLength || MAX_HALF;
     team.players = raw.players;
     team.matches = raw.matches || [];
-    return { version: 2, activeTeamId: team.id, teams: [team] };
+    return ensureClubs({ version: 2, activeTeamId: team.id, teams: [team] });
   }
   throw new Error('Ukjent dataformat');
+}
+
+// Lag uten klubb (data fra før klubbene kom) legges i en klubb.
+function ensureClubs(d) {
+  if (!Array.isArray(d.clubs)) d.clubs = [];
+  const orphans = d.teams.filter((t) => !d.clubs.some((c) => c.id === t.clubId));
+  if (orphans.length || !d.clubs.length) {
+    let club = d.clubs[0];
+    if (!club) {
+      club = newClub(d.teams.some((t) => /tune/i.test(t.name || '')) ? 'Tune IL' : 'Min klubb');
+      d.clubs.push(club);
+    }
+    orphans.forEach((t) => { t.clubId = club.id; });
+  }
+  return d;
 }
 
 function loadData() {
   try {
     // Data lagret under det gamle navnet hentes inn første gang.
     const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY);
-    return raw ? migrate(JSON.parse(raw)) : emptyData();
+    const loaded = raw ? migrate(JSON.parse(raw)) : emptyData();
+    // Lagre med en gang, så klubber laget av migrate() beholder id-en sin
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded));
+    return loaded;
   } catch (err) {
     console.error('Kunne ikke lese lagrede data', err);
     return emptyData();
@@ -98,11 +122,16 @@ let data = loadData();
 const SESSION_KEY = 'skuddkart-session';
 const SYNC_KEY = 'skuddkart-sync';
 let session = readJson(SESSION_KEY);   // { access_token, refresh_token, expires_at, email }
-let cloudRole = null;                  // { admin, teams: [lag-id-er] }
-let members = null;                    // brukerlisten (bare for administrator)
+let cloudRole = null;                  // { admin, clubs: [klubbleder i], teams: [trener for] }
+let members = null;                    // brukerlisten (administrator og klubbledere)
 let syncState = readJson(SYNC_KEY) || { snap: {}, tombs: [], lastSyncAt: null };
 let syncing = false;
 let syncTimer = null;
+
+// Denne telefonen/PC-en (for å se om en kamp registreres et annet sted)
+const DEVICE_KEY = 'skuddkart-device';
+const deviceId = readJson(DEVICE_KEY) || newId();
+writeJson(DEVICE_KEY, deviceId);
 
 function readJson(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch (err) { return null; }
@@ -295,6 +324,7 @@ function showView(name) {
     tab.classList.toggle('active', tab.dataset.view === activeTab);
   });
   document.body.classList.toggle('in-match', name === 'match');
+  updateWakeLock();
   if (name === 'stats') renderStats();
   window.scrollTo(0, 0);
 }
@@ -307,24 +337,48 @@ document.querySelectorAll('.tab').forEach((tab) => {
 // LAG
 // =========================================================
 //
-// Appen kan ha flere lag. Alt annet (spillere, kamper, statistikk)
-// gjelder laget som er valgt, se team().
+// Appen har klubber, og hver klubb kan ha flere lag. Alt annet (spillere,
+// kamper, statistikk) gjelder laget som er valgt, se team().
 
 function teamName(t) {
   return (t || team()).name || 'Mitt lag';
 }
 
+function clubOf(t) {
+  const owner = t || team();
+  return data.clubs.find((c) => c.id === owner.clubId) || data.clubs[0];
+}
+
+function clubName(t) {
+  const club = clubOf(t);
+  return club ? club.name || 'Min klubb' : '';
+}
+
+// «Tune IL J13» (bare ett navn hvis lag og klubb heter det samme)
+function fullTeamName(t, separator = ' ') {
+  const club = clubName(t);
+  const name = teamName(t);
+  return !club || club.toLowerCase() === name.toLowerCase() ? name : club + separator + name;
+}
+
+const byName = (a, b) => (a.name || '').localeCompare(b.name || '', 'nb');
+
+function sortedClubs() {
+  return [...data.clubs].sort(byName);
+}
+
 function sortedTeams() {
-  return [...data.teams].sort((a, b) => teamName(a).localeCompare(teamName(b), 'nb'));
+  return [...data.teams].sort((a, b) => clubName(a).localeCompare(clubName(b), 'nb') ||
+    teamName(a).localeCompare(teamName(b), 'nb'));
 }
 
 function renderTeam() {
-  $('topbar-team').textContent = teamName();
+  $('topbar-team').textContent = fullTeamName(team(), ' · ');
   $('team-heading').textContent = teamName();
   $('input-team-name').value = team().name;
   $('input-team-half').value = team().halfLength;
-  const isAdmin = !!(session && cloudRole && cloudRole.admin);
-  $('btn-cloud-team').hidden = !isAdmin || !!team().cloud;
+  renderClubSelect();
+  $('btn-cloud-team').hidden = !canUpload(team()) || !!team().cloud;
   $('team-cloud-text').hidden = !team().cloud;
   $('team-cloud-text').textContent = '☁ Laget lagres på nett og synkroniseres automatisk.';
   const archived = !!team().archived;
@@ -347,7 +401,13 @@ function renderTeamList() {
 
 function fillTeamRows(list, teams) {
   list.replaceChildren();
+  let lastClub = null;
   teams.forEach((t) => {
+    // Overskrift for hver klubb
+    if (clubName(t) !== lastClub) {
+      lastClub = clubName(t);
+      list.append(el('li', 'list-club', lastClub));
+    }
     const active = t.id === team().id;
     const row = el('button', 'match-row team-row' + (active ? ' active' : ''));
     row.type = 'button';
@@ -397,16 +457,77 @@ function selectTeam(id) {
   statsMatchId = 'all';
   currentMatchId = null;
   renderAll();
-  showToast(`Viser ${teamName()}`);
+  showToast(`Viser ${fullTeamName()}`);
 }
 
 $('input-team-name').addEventListener('input', (event) => {
   team().name = event.target.value.trim();
-  $('topbar-team').textContent = teamName();
+  $('topbar-team').textContent = fullTeamName(team(), ' · ');
   $('team-heading').textContent = teamName();
   saveData();
   renderMatchList();
   renderTeamList();
+});
+
+// ---------- Klubben laget hører til ----------
+//
+// Nederst i lista: lag en ny klubb, eller endre navnet på klubben.
+
+const NEW_CLUB = '__new';
+const RENAME_CLUB = '__rename';
+
+// Spør etter navn og lager klubben (eller finner en med samme navn)
+async function askNewClub() {
+  const name = await ask({ title: 'Ny klubb', okText: 'Lag klubben', input: { placeholder: 'F.eks. Tune IL' } });
+  if (!name || !name.trim()) return null;
+  let club = data.clubs.find((c) => (c.name || '').toLowerCase() === name.trim().toLowerCase());
+  if (!club) {
+    club = newClub(name.trim());
+    data.clubs.push(club);
+  }
+  return club;
+}
+
+function fillClubOptions(select) {
+  select.replaceChildren();
+  sortedClubs().forEach((c) => select.append(new Option(c.name || 'Min klubb', c.id)));
+  select.append(new Option('+ Ny klubb …', NEW_CLUB));
+}
+
+function renderClubSelect() {
+  const select = $('input-team-club');
+  const t = team();
+  fillClubOptions(select);
+  // Navnet på en klubb på nett kan bare administrator endre
+  if (!clubOf(t).cloud || isAdmin()) select.append(new Option('✎ Endre navn på klubben …', RENAME_CLUB));
+  select.value = clubOf(t).id;
+  // På nett: bare administrator og klubbleder kan flytte laget
+  select.disabled = !!(t.cloud && !canUpload(t));
+}
+
+$('input-team-club').addEventListener('change', async (event) => {
+  const t = team();
+  const old = clubOf(t);
+  const choice = event.target.value;
+  event.target.value = old.id;   // til vi vet svaret
+
+  if (choice === RENAME_CLUB) {
+    const name = await ask({ title: 'Endre navn på klubben', okText: 'Lagre', input: { value: old.name } });
+    if (!name || !name.trim()) return;
+    old.name = name.trim();
+  } else {
+    let target = data.clubs.find((c) => c.id === choice);
+    if (choice === NEW_CLUB) target = await askNewClub();
+    if (!target || target.id === old.id) return;
+    if (t.cloud && !target.cloud) {
+      if (!isAdmin()) return showToast('Laget er på nett. Velg en klubb som også er på nett.');
+      target.cloud = true;
+    }
+    t.clubId = target.id;
+    showToast(`${teamName(t)} hører nå til ${target.name}`);
+  }
+  saveData();
+  renderAll();
 });
 
 // ---------- Nytt lag ----------
@@ -414,6 +535,8 @@ $('input-team-name').addEventListener('input', (event) => {
 $('btn-new-team').addEventListener('click', () => {
   $('team-form').reset();
   $('input-new-team-half').value = team().halfLength;
+  fillClubOptions($('input-new-team-club'));
+  $('input-new-team-club').value = clubOf().id;
   const copyFrom = $('input-copy-from');
   copyFrom.replaceChildren(new Option('Ingen – start med tom spillerliste', ''));
   sortedTeams().forEach((t) => {
@@ -428,6 +551,15 @@ $('btn-new-team').addEventListener('click', () => {
 
 $('btn-cancel-team').addEventListener('click', () => $('team-dialog').close());
 
+$('input-new-team-club').addEventListener('change', async (event) => {
+  if (event.target.value !== NEW_CLUB) return;
+  event.target.value = clubOf().id;
+  const club = await askNewClub();
+  if (!club) return;
+  fillClubOptions(event.target);
+  event.target.value = club.id;
+});
+
 $('team-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const name = $('input-new-team').value.trim();
@@ -436,13 +568,14 @@ $('team-form').addEventListener('submit', (event) => {
     $('team-error').hidden = false;
     return;
   }
-  if (data.teams.some((t) => teamName(t).toLowerCase() === name.toLowerCase())) {
-    $('team-error').textContent = `Det finnes allerede et lag som heter ${name}.`;
+  const clubId = $('input-new-team-club').value;
+  if (data.teams.some((t) => t.clubId === clubId && teamName(t).toLowerCase() === name.toLowerCase())) {
+    $('team-error').textContent = `Klubben har allerede et lag som heter ${name}.`;
     $('team-error').hidden = false;
     return;
   }
 
-  const newT = newTeam(name);
+  const newT = newTeam(name, clubId);
   newT.halfLength = clampHalf($('input-new-team-half').value);
   // Kopierte spillere får nye id-er, så lagene er helt uavhengige.
   const source = data.teams.find((t) => t.id === $('input-copy-from').value);
@@ -467,7 +600,7 @@ $('btn-delete-team').addEventListener('click', async () => {
   if (t.cloud) syncState.tombs.push({ kind: 't', id: t.id });
   data.teams = data.teams.filter((x) => x.id !== t.id);
   // Appen trenger minst ett lag. Var dette det siste, lages et tomt lag.
-  if (!data.teams.length) data.teams.push(newTeam('Mitt lag'));
+  if (!data.teams.length) data.teams.push(newTeam('Mitt lag', t.clubId));
   data.activeTeamId = (sortedTeams().find((x) => !x.archived) || sortedTeams()[0]).id;
   saveData();
   statsMatchId = 'all';
@@ -480,7 +613,12 @@ $('btn-delete-team').addEventListener('click', async () => {
 $('btn-team-switch').addEventListener('click', () => {
   const list = $('team-switch-list');
   list.replaceChildren();
+  let lastClub = null;
   sortedTeams().filter((t) => !t.archived || t.id === team().id).forEach((t) => {
+    if (clubName(t) !== lastClub) {
+      lastClub = clubName(t);
+      list.append(el('p', 'switch-club', lastClub));
+    }
     const active = t.id === team().id;
     const button = el('button', 'btn btn-secondary' + (active ? ' active' : ''));
     button.type = 'button';
@@ -644,7 +782,7 @@ function matchScore(match, upTo) {
 
 // Viser hjemmelaget først, slik man er vant til.
 function matchTitle(match) {
-  const us = team().name || 'Vi';
+  const us = fullTeamName();
   return match.home ? `${us} – ${match.opponent}` : `${match.opponent} – ${us}`;
 }
 
@@ -742,7 +880,23 @@ function currentMatch() {
   return team().matches.find((m) => m.id === currentMatchId);
 }
 
-function openMatch(id) {
+// Bare én bør registrere per kamp: ellers kan den enes registreringer
+// overskrive den andres når kampen synkroniseres.
+const OTHER_DEVICE_MS = 15 * 60 * 1000;
+
+async function openMatch(id) {
+  const match = team().matches.find((m) => m.id === id);
+  const reg = match && match.registrar;
+  if (match && !match.finished && reg && reg.device !== deviceId && Date.now() - reg.at < OTHER_DEVICE_MS) {
+    const minutes = Math.max(1, Math.round((Date.now() - reg.at) / 60000));
+    const ok = await ask({
+      title: 'Registreres på en annen enhet',
+      message: `Det ble registrert i denne kampen fra en annen telefon eller PC for ${minutes} min siden. ` +
+               'Bare én bør registrere per kamp, ellers kan registreringer gå tapt.',
+      okText: 'Åpne likevel'
+    });
+    if (!ok) return;
+  }
   currentMatchId = id;
   draft = newDraft('us');
   $('side-toggle').querySelector('input[value="us"]').checked = true;
@@ -777,7 +931,7 @@ function shortName(name) {
 
 function renderScoreboard(match) {
   const score = matchScore(match);
-  $('sb-us-name').textContent = shortName(teamName());
+  $('sb-us-name').textContent = shortName(clubName() || teamName());
   $('sb-us-name').title = teamName();
   $('sb-them-name').textContent = shortName(match.opponent);
   $('sb-them-name').title = match.opponent;
@@ -821,6 +975,38 @@ function startClock(match) {
   match.clock.startedAt = Date.now();
 }
 
+// ---------- Skjermen holdes våken ----------
+//
+// Mens en kamp som ikke er avsluttet vises, slukker ikke skjermen.
+// (Screen Wake Lock: nyere Chrome, Android og iPhone. Ellers skjer ingenting.)
+
+let wakeLock = null;
+let wakeLockPending = false;
+let wakeLockRetryAt = 0;   // ikke spør hvert sekund hvis nettleseren sier nei
+
+async function updateWakeLock() {
+  if (!('wakeLock' in navigator) || wakeLockPending) return;
+  const match = !$('view-match').hidden && currentMatch();
+  const want = !!(match && !match.finished && document.visibilityState === 'visible');
+  if (want && !wakeLock && Date.now() >= wakeLockRetryAt) {
+    wakeLockPending = true;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (err) {
+      console.warn('Klarte ikke å holde skjermen våken', err);
+      wakeLockRetryAt = Date.now() + 60000;
+    } finally {
+      wakeLockPending = false;
+    }
+  } else if (!want && wakeLock) {
+    wakeLock.release();
+    wakeLock = null;
+  }
+}
+
+document.addEventListener('visibilitychange', updateWakeLock);
+
 // Time-out: kampklokka står, og ett minutt telles ned i sanntid.
 const TIMEOUT_MS = 60 * 1000;
 
@@ -829,6 +1015,7 @@ function timeoutLeftMs(match) {
 }
 
 function renderClock(match) {
+  updateWakeLock();
   const c = match.clock;
   const sec = Math.floor(clockMs(match) / 1000);
   const timeUp = clockMs(match) >= halfMs(match);
@@ -1323,6 +1510,7 @@ function registerShot(result) {
     sec: Math.floor(clockMs(match) / 1000)
   };
   match.shots.push(shot);
+  match.registrar = { device: deviceId, at: Date.now() };
   saveData();
 
   draft = newDraft(draft.side);
@@ -1692,6 +1880,7 @@ function registerEvent(type) {
   };
   if (!match.events) match.events = [];
   match.events.push(ev);
+  match.registrar = { device: deviceId, at: Date.now() };
 
   // Time-out: kampklokka stoppes, og ett minutt telles ned.
   if (type === 'timeout') {
@@ -2346,12 +2535,12 @@ $('btn-analysis-stats').addEventListener('click', () => {
 // ---------- Del / PDF ----------
 //
 // Lager en rapport med både våre skudd og keeper/forsvar for valgt kamp og
-// omgang, og åpner nettleserens utskrift. Derfra kan den lagres som PDF
-// eller deles (på iPhone: del-knappen i utskriftsvinduet).
+// omgang i #print-report. Gir false hvis det ikke er noe å vise.
 
-function printReport() {
+function buildReport() {
   if (!statsMatches().some((m) => m.shots.some(inStatsHalf))) {
-    return showToast('Ingen skudd å lage rapport av ennå');
+    showToast('Ingen skudd å lage rapport av ennå');
+    return false;
   }
   const report = $('print-report');
   report.replaceChildren();
@@ -2365,7 +2554,7 @@ function printReport() {
   logo.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#fff"/>' +
     '<path d="M15 46V20h34v26" fill="none" stroke="#00965E" stroke-width="4.5" stroke-linejoin="round"/>' +
     '<circle cx="40" cy="29" r="5.5" fill="#BE312F" stroke="#fff" stroke-width="2.2"/></svg>';
-  top.append(logo, el('span', 'pr-kicker', 'Kamprapport · Skuddkart'), el('span', 'pr-team', teamName()));
+  top.append(logo, el('span', 'pr-kicker', 'Kamprapport · Skuddkart'), el('span', 'pr-team', fullTeamName(team(), ' · ')));
 
   const main = el('div', 'pr-main');
   const titleBox = el('div', 'pr-titlebox');
@@ -2419,11 +2608,138 @@ function printReport() {
     el('span', '', 'Utskrevet ' + new Date().toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' }))
   );
   report.append(foot);
-
-  window.print();
+  return true;
 }
 
-$('btn-print').addEventListener('click', printReport);
+// ---------- Del rapporten som PDF-fil ----------
+//
+// Rapporten tegnes som bilde (html2canvas) og legges på A4-sider (jsPDF).
+// Filen deles med del-arket på mobil (Messenger, e-post …) og lastes ned
+// på PC. Bibliotekene ligger i vendor/ og hentes først når de trengs.
+
+const PDF_LIBS = ['vendor/html2canvas-pro.min.js', 'vendor/jspdf.umd.min.js'];
+const A4 = { width: 210, height: 297, margin: 12 };   // mm
+let makingPdf = false;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing && existing.dataset.loaded) return resolve();
+    const script = existing || document.createElement('script');
+    script.addEventListener('load', () => { script.dataset.loaded = '1'; resolve(); });
+    script.addEventListener('error', () => reject(new Error('Fant ikke ' + src)));
+    if (!existing) {
+      script.src = src;
+      document.head.append(script);
+    }
+  });
+}
+
+// Hvor rapporten kan deles mellom to sider: under hver blokk
+// (toppfelt, overskrift, nøkkeltall, kort …), i px fra toppen av rapporten.
+function reportBreaks(report) {
+  const top = report.getBoundingClientRect().top;
+  const blocks = [];
+  [...report.children].forEach((child) => {
+    if (!child.matches('section')) return blocks.push(child);
+    [...child.children].forEach((part) => {
+      if (part.matches('h2, p')) blocks.push(part);
+      else blocks.push(...part.children);
+    });
+  });
+  return blocks.map((b) => b.getBoundingClientRect().bottom - top).sort((a, b) => a - b);
+}
+
+function reportFileName() {
+  const single = statsMatchId === 'all' ? null : statsMatches()[0];
+  const what = single ? `${single.opponent} ${single.date}` : 'alle kamper';
+  return `Kamprapport ${fullTeamName()} – ${what}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
+}
+
+async function sharePdf() {
+  if (makingPdf) return;
+  if (!buildReport()) return;
+  makingPdf = true;
+  showToast('Lager PDF …');
+  const report = $('print-report');
+  report.classList.add('pdf-render');
+  try {
+    await Promise.all(PDF_LIBS.map(loadScript));
+    await document.fonts.ready;
+
+    const scale = 2;
+    const canvas = await window.html2canvas(report, { scale, backgroundColor: '#ffffff', logging: false });
+    const breaks = reportBreaks(report);
+    const widthPx = report.offsetWidth;
+    const contentMm = A4.width - 2 * A4.margin;
+    const pxPerMm = widthPx / contentMm;
+    const pageHeightPx = (A4.height - 2 * A4.margin) * pxPerMm;
+
+    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+    let start = 0;
+    let first = true;
+    while (start < report.offsetHeight - 1) {
+      // Del siden under den siste blokken som får plass
+      const limit = start + pageHeightPx;
+      const fits = breaks.filter((b) => b > start + 1 && b <= limit);
+      const end = limit >= report.offsetHeight ? report.offsetHeight : (fits.length ? fits[fits.length - 1] : limit);
+
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width;
+      slice.height = Math.ceil((end - start) * scale);
+      const ctx = slice.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, Math.floor(start * scale), canvas.width, slice.height, 0, 0, slice.width, slice.height);
+
+      if (!first) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', A4.margin, A4.margin, contentMm, (end - start) / pxPerMm);
+      first = false;
+      start = end;
+    }
+
+    const file = new File([pdf.output('blob')], reportFileName(), { type: 'application/pdf' });
+    report.classList.remove('pdf-render');
+    makingPdf = false;
+    await deliverPdf(file);
+  } catch (err) {
+    console.warn('Klarte ikke å lage PDF', err);
+    report.classList.remove('pdf-render');
+    makingPdf = false;
+    showToast('Klarte ikke å lage PDF-filen. Åpner utskrift i stedet.');
+    window.print();
+  }
+}
+
+// Mobil: del-arket. PC: last ned.
+async function deliverPdf(file) {
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/, '') });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      // Det tok for lang tid siden trykket (iPhone krever et nytt trykk)
+      if (err.name === 'NotAllowedError') {
+        const ok = await ask({ title: 'Rapporten er klar', okText: 'Del PDF' });
+        if (ok) {
+          try { await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/, '') }); } catch (e) { /* avbrutt */ }
+        }
+        return;
+      }
+      console.warn('Deling feilet, laster ned i stedet', err);
+    }
+  }
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(file);
+  link.download = file.name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  showToast('PDF-en er lagret i Nedlastinger');
+}
+
+$('btn-print').addEventListener('click', sharePdf);
 
 // ---------- Brukerveiledning ----------
 
@@ -2574,14 +2890,33 @@ async function rest(pathAndQuery, options) {
   return json;
 }
 
-// Hvem er jeg i klubben? (administrator, eller trener for hvilke lag)
+// Hvem er jeg? Administrator (alt), klubbleder (alle lag i klubben)
+// eller trener (bare eget lag).
 async function loadRole() {
-  const rows = await rest('members?select=email,role,team_id');
+  const rows = await rest('members?select=email,role,club_id,team_id');
   const mine = rows.filter((r) => (r.email || '').toLowerCase() === session.email);
   cloudRole = {
     admin: mine.some((r) => r.role === 'admin'),
-    teams: mine.filter((r) => r.team_id).map((r) => r.team_id)
+    clubs: mine.filter((r) => r.role === 'club_admin').map((r) => r.club_id),
+    teams: mine.filter((r) => r.role === 'coach').map((r) => r.team_id)
   };
+}
+
+function isAdmin() {
+  return !!(session && cloudRole && cloudRole.admin);
+}
+
+function isClubAdmin(clubId) {
+  return !!(session && cloudRole && cloudRole.clubs.includes(clubId));
+}
+
+// Kan legge laget på nett: administrator, eller klubbleder i lagets klubb
+function canUpload(t) {
+  return isAdmin() || isClubAdmin(t.clubId);
+}
+
+function clubDoc(c) {
+  return { name: c.name };
 }
 
 // ---------- Synkronisering ----------
@@ -2632,6 +2967,7 @@ async function syncNow(manual) {
     syncState.lastSyncAt = Date.now();
     syncState.lastError = null;
     if (changed) afterRemoteChange();
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify(data));   // «på nett»-merker
     if (manual) showToast('Synkronisert');
   } catch (err) {
     console.warn('Synkronisering feilet', err);
@@ -2642,15 +2978,56 @@ async function syncNow(manual) {
     syncing = false;
     renderCloud();
   }
-  if (cloudRole && cloudRole.admin && !members) loadMembers();
+  if (canManageMembers() && !members) loadMembers();
 }
 
 async function pullFromCloud() {
-  const teams = await rest('teams?select=id,data,deleted');
+  const clubs = await rest('clubs?select=id,name,deleted');
+  const teams = await rest('teams?select=id,club_id,data,deleted');
   const matches = await rest('matches?select=id,team_id,data,deleted');
   let changed = false;
 
+  clubs.forEach((row) => {
+    const key = snapKey('c', row.id);
+    let local = data.clubs.find((c) => c.id === row.id);
+    if (row.deleted) {
+      if (local && !data.teams.some((t) => t.clubId === row.id)) {
+        data.clubs = data.clubs.filter((c) => c.id !== row.id);
+        changed = true;
+      }
+      delete syncState.snap[key];
+      return;
+    }
+    if (!local) {
+      // Samme klubb laget her før innlogging? Da slås de sammen.
+      local = data.clubs.find((c) => !c.cloud && (c.name || '').toLowerCase() === row.name.toLowerCase());
+      if (local) {
+        data.teams.forEach((t) => { if (t.clubId === local.id) t.clubId = row.id; });
+        local.id = row.id;
+      } else {
+        local = { id: row.id, name: row.name };
+        data.clubs.push(local);
+      }
+      local.cloud = true;
+      local.name = row.name;
+      syncState.snap[key] = canon(clubDoc(local));
+      changed = true;
+      return;
+    }
+    local.cloud = true;
+    const remote = canon({ name: row.name });
+    if (remote !== syncState.snap[key] && !isDirty('c', row.id, clubDoc(local))) {
+      local.name = row.name;
+      changed = true;
+    }
+    if (!isDirty('c', row.id, clubDoc(local)) || remote === canon(clubDoc(local))) {
+      syncState.snap[key] = canon(clubDoc(local));
+    }
+  });
+
   teams.forEach((row) => {
+    // Lag lagret før klubbene kom har klubben bare i egen kolonne
+    if (row.club_id && !row.data.clubId) row.data.clubId = row.club_id;
     const key = snapKey('t', row.id);
     const local = data.teams.find((t) => t.id === row.id);
     if (row.deleted) {
@@ -2705,32 +3082,51 @@ async function pullFromCloud() {
     }
   });
 
+  ensureClubs(data);
   if (!data.teams.some((t) => t.id === data.activeTeamId)) {
-    if (!data.teams.length) data.teams.push(newTeam('Mitt lag'));
+    if (!data.teams.length) data.teams.push(newTeam('Mitt lag', data.clubs[0].id));
     data.activeTeamId = data.teams[0].id;
   }
   return changed;
 }
 
+const TABLES = { c: 'clubs', t: 'teams', m: 'matches' };
+
 async function pushToCloud() {
   // Slettinger først
   for (const tomb of [...syncState.tombs]) {
-    const table = tomb.kind === 'm' ? 'matches' : 'teams';
-    await rest(`${table}?id=eq.${encodeURIComponent(tomb.id)}`, { method: 'PATCH', body: { deleted: true } });
+    await rest(`${TABLES[tomb.kind]}?id=eq.${encodeURIComponent(tomb.id)}`, { method: 'PATCH', body: { deleted: true } });
     syncState.tombs = syncState.tombs.filter((t) => t !== tomb);
     delete syncState.snap[snapKey(tomb.kind, tomb.id)];
+  }
+
+  // Klubber (bare administrator kan opprette og endre dem). Et lag på nett
+  // trenger at klubben også er på nett.
+  if (isAdmin()) {
+    data.teams.forEach((t) => { if (t.cloud) clubOf(t).cloud = true; });
+    for (const c of data.clubs.filter((x) => x.cloud)) {
+      if (!isDirty('c', c.id, clubDoc(c))) continue;
+      await rest('clubs', {
+        method: 'POST',
+        body: [{ id: c.id, name: c.name, deleted: false }],
+        prefer: 'resolution=merge-duplicates,return=minimal'
+      });
+      syncState.snap[snapKey('c', c.id)] = canon(clubDoc(c));
+    }
   }
 
   for (const t of data.teams.filter((x) => x.cloud)) {
     const doc = teamDoc(t);
     if (isDirty('t', t.id, doc)) {
       const known = syncState.snap[snapKey('t', t.id)] !== undefined;
+      const row = { data: doc, archived: !!t.archived };
+      if (clubOf(t).cloud) row.club_id = t.clubId;
       if (known) {
-        await rest(`teams?id=eq.${encodeURIComponent(t.id)}`, { method: 'PATCH', body: { data: doc, archived: !!t.archived } });
+        await rest(`teams?id=eq.${encodeURIComponent(t.id)}`, { method: 'PATCH', body: row });
       } else {
         await rest('teams', {
           method: 'POST',
-          body: [{ id: t.id, data: doc, archived: !!t.archived }],
+          body: [{ id: t.id, ...row }],
           prefer: 'resolution=merge-duplicates,return=minimal'
         });
       }
@@ -2790,12 +3186,20 @@ $('btn-cloud-team').addEventListener('click', async () => {
   if (!ok) return;
   shortenNames(t);
   t.cloud = true;
+  if (isAdmin()) clubOf(t).cloud = true;
   saveData();
   renderAll();
   syncNow(true);
 });
 
 // ---------- Visning ----------
+
+function roleText() {
+  if (!cloudRole) return '';
+  if (cloudRole.admin) return ' · administrator';
+  if (cloudRole.clubs.length) return ' · klubbleder';
+  return cloudRole.teams.length ? ' · trener' : ' · ingen lag ennå';
+}
 
 function renderCloud() {
   const loggedIn = !!session;
@@ -2804,12 +3208,7 @@ function renderCloud() {
   $('btn-sync').disabled = syncing;
   if (!loggedIn) return renderMembers();
 
-  let role = '';
-  if (cloudRole) {
-    role = cloudRole.admin ? ' · administrator'
-      : cloudRole.teams.length ? ' · trener' : ' · ingen lag ennå';
-  }
-  $('cloud-who').textContent = `Logget inn som ${session.email}${role}`;
+  $('cloud-who').textContent = `Logget inn som ${session.email}${roleText()}`;
 
   let status;
   if (syncing) status = 'Synkroniserer …';
@@ -2817,22 +3216,29 @@ function renderCloud() {
   else if (syncState.lastSyncAt) {
     status = 'Sist synkronisert ' + new Date(syncState.lastSyncAt).toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' });
   } else status = 'Ikke synkronisert ennå.';
-  if (cloudRole && !cloudRole.admin && !cloudRole.teams.length) {
+  if (cloudRole && !cloudRole.admin && !cloudRole.clubs.length && !cloudRole.teams.length) {
     status = 'Du har ikke tilgang til noen lag ennå. Be administrator om å legge deg til.';
   }
   $('cloud-status').textContent = status;
   renderMembers();
 }
 
-// ---------- Brukere (administrator) ----------
+// ---------- Brukere (administrator og klubbleder) ----------
 //
-// Administrator legger til trenere (ett lag hver) og andre administratorer.
-// Tilgangen styres av tabellen members i databasen; den som står der kan
-// logge inn med e-postadressen sin og får se lagene sine.
+// Administrator legger til klubbledere, trenere og andre administratorer.
+// Klubbleder legger til trenere i sin egen klubb. Tilgangen styres av
+// tabellen members i databasen; den som står der kan logge inn med
+// e-postadressen sin og får se lagene sine.
+
+const ROLE_LABELS = { admin: 'Administrator', club_admin: 'Klubbleder', coach: 'Trener' };
+
+function canManageMembers() {
+  return isAdmin() || !!(session && cloudRole && cloudRole.clubs.length);
+}
 
 async function loadMembers() {
   try {
-    members = await rest('members?select=id,email,name,role,team_id&order=role.asc,name.asc');
+    members = await rest('members?select=id,email,name,role,club_id,team_id&order=role.asc,name.asc');
     $('members-status').hidden = true;
   } catch (err) {
     console.warn('Klarte ikke å hente brukere', err);
@@ -2842,28 +3248,51 @@ async function loadMembers() {
   renderMembers();
 }
 
+function cloudClubName(id) {
+  const club = data.clubs.find((c) => c.id === id);
+  return club ? club.name : 'ukjent klubb';
+}
+
 function cloudTeamName(id) {
   const t = data.teams.find((x) => x.id === id);
-  return t ? teamName(t) : 'ukjent lag';
+  return t ? fullTeamName(t) : 'ukjent lag';
+}
+
+// «Trener · Tune IL J13», «Klubbleder · Tune IL», «Administrator»
+function memberPlace(m) {
+  if (m.role === 'coach') return cloudTeamName(m.team_id);
+  if (m.role === 'club_admin') return cloudClubName(m.club_id);
+  return '';
+}
+
+// Klubbleder kan bare fjerne trenere; ingen kan fjerne seg selv som administrator
+function canRemove(m) {
+  const me = (m.email || '').toLowerCase() === session.email;
+  if (isAdmin()) return !(me && m.role === 'admin');
+  return m.role === 'coach' && isClubAdmin(m.club_id);
 }
 
 function renderMembers() {
-  const isAdmin = !!(session && cloudRole && cloudRole.admin);
-  $('members-card').hidden = !isAdmin;
-  if (!isAdmin) return;
+  const show = canManageMembers();
+  $('members-card').hidden = !show;
+  if (!show) return;
+
+  $('members-intro').textContent = isAdmin()
+    ? 'Klubbledere ser alle lag i klubben sin og kan legge til trenere. Trenere ser bare laget sitt. Laget må være lagret på nett først.'
+    : 'Trenere logger inn med e-postadressen sin og ser bare laget sitt. Laget må være lagret på nett først.';
 
   const list = $('member-list');
   list.replaceChildren();
   (members || []).forEach((m) => {
     const row = el('li', 'member-row');
     const text = el('div', 'member-text');
+    const place = memberPlace(m);
     text.append(
       el('span', 'member-name', m.name || m.email),
-      el('span', 'member-meta', (m.role === 'admin' ? 'Administrator' : 'Trener · ' + cloudTeamName(m.team_id)) + ' · ' + m.email)
+      el('span', 'member-meta', ROLE_LABELS[m.role] + (place ? ' · ' + place : '') + ' · ' + m.email)
     );
     row.append(text);
-    const isMe = m.role === 'admin' && (m.email || '').toLowerCase() === session.email;
-    if (!isMe) {
+    if (canRemove(m)) {
       const remove = el('button', 'icon-btn member-remove');
       remove.type = 'button';
       remove.setAttribute('aria-label', 'Fjern ' + (m.name || m.email));
@@ -2877,7 +3306,9 @@ function renderMembers() {
 }
 
 async function removeMember(m) {
-  const what = m.role === 'admin' ? 'administratortilgangen' : 'tilgangen til ' + cloudTeamName(m.team_id);
+  const what = m.role === 'admin' ? 'administratortilgangen'
+    : m.role === 'club_admin' ? 'klubbledertilgangen i ' + cloudClubName(m.club_id)
+      : 'tilgangen til ' + cloudTeamName(m.team_id);
   const ok = await ask({
     title: `Fjerne ${m.name || m.email}?`,
     message: `${m.name || m.email} mister ${what}. Kamper og statistikk blir liggende.`,
@@ -2894,26 +3325,47 @@ async function removeMember(m) {
   loadMembers();
 }
 
-function showMemberTeam() {
-  $('member-team-field').hidden = $('input-member-role').value !== 'coach';
+// Klubbene brukeren kan legge til folk i (bare klubber på nett)
+function memberClubs() {
+  return sortedClubs().filter((c) => c.cloud && (isAdmin() || isClubAdmin(c.id)));
+}
+
+// Viser klubb- og lagvalg ut fra rollen, og lagene i valgt klubb
+function updateMemberFields() {
+  const role = $('input-member-role').value;
+  $('member-club-field').hidden = role === 'admin';
+  $('member-team-field').hidden = role !== 'coach';
+  const clubId = $('input-member-club').value;
+  const select = $('input-member-team');
+  select.replaceChildren();
+  sortedTeams().filter((t) => t.cloud && !t.archived && t.clubId === clubId)
+    .forEach((t) => select.append(new Option(teamName(t), t.id)));
 }
 
 $('btn-add-member').addEventListener('click', () => {
   $('member-form').reset();
   $('member-error').hidden = true;
-  const select = $('input-member-team');
-  select.replaceChildren();
-  data.teams.filter((t) => t.cloud && !t.archived).forEach((t) => {
-    const option = el('option', '', teamName(t));
-    option.value = t.id;
-    select.append(option);
-  });
-  showMemberTeam();
+
+  const roleSelect = $('input-member-role');
+  roleSelect.replaceChildren(new Option('Trener (ser ett lag)', 'coach'));
+  if (isAdmin()) {
+    roleSelect.append(
+      new Option('Klubbleder (ser alle lag i klubben)', 'club_admin'),
+      new Option('Administrator (ser alle klubber)', 'admin')
+    );
+  }
+  const clubSelect = $('input-member-club');
+  clubSelect.replaceChildren();
+  memberClubs().forEach((c) => clubSelect.append(new Option(c.name, c.id)));
+  if (memberClubs().some((c) => c.id === clubOf().id)) clubSelect.value = clubOf().id;
+
+  updateMemberFields();
   $('member-dialog').showModal();
   $('input-member-name').focus();
 });
 
-$('input-member-role').addEventListener('change', showMemberTeam);
+$('input-member-role').addEventListener('change', updateMemberFields);
+$('input-member-club').addEventListener('change', updateMemberFields);
 $('btn-cancel-member').addEventListener('click', () => $('member-dialog').close());
 
 $('member-form').addEventListener('submit', async (event) => {
@@ -2921,7 +3373,8 @@ $('member-form').addEventListener('submit', async (event) => {
   const name = $('input-member-name').value.trim();
   const email = $('input-member-email').value.trim().toLowerCase();
   const role = $('input-member-role').value;
-  const teamId = role === 'coach' ? $('input-member-team').value : null;
+  const clubId = role === 'admin' ? null : $('input-member-club').value || null;
+  const teamId = role === 'coach' ? $('input-member-team').value || null : null;
   const fail = (message) => {
     $('member-error').textContent = message;
     $('member-error').hidden = false;
@@ -2929,16 +3382,23 @@ $('member-form').addEventListener('submit', async (event) => {
 
   if (!name) return fail('Skriv inn navn.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('Skriv inn en gyldig e-postadresse.');
+  if (role !== 'admin' && !clubId) {
+    return fail('Ingen klubb er lagret på nett ennå. Gå til Lag og trykk «Lagre laget på nett» først.');
+  }
   if (role === 'coach' && !teamId) {
-    return fail('Ingen lag er lagret på nett ennå. Gå til Lag og trykk «Lagre laget på nett» først.');
+    return fail('Klubben har ingen lag på nett ennå. Gå til Lag og trykk «Lagre laget på nett» først.');
   }
   const exists = (members || []).some((m) => (m.email || '').toLowerCase() === email &&
-    (role === 'admin' ? m.role === 'admin' : m.team_id === teamId));
-  if (exists) return fail(role === 'admin' ? 'Denne personen er allerede administrator.' : 'Denne personen har allerede tilgang til laget.');
+    m.role === role && (m.club_id || null) === clubId && (m.team_id || null) === teamId);
+  if (exists) return fail('Denne personen har allerede denne tilgangen.');
 
   $('btn-save-member').disabled = true;
   try {
-    await rest('members', { method: 'POST', body: [{ email, name, role, team_id: teamId }], prefer: 'return=minimal' });
+    await rest('members', {
+      method: 'POST',
+      body: [{ email, name, role, club_id: clubId, team_id: teamId }],
+      prefer: 'return=minimal'
+    });
     $('member-dialog').close();
     showToast(`${name} er lagt til og kan logge inn med ${email}`);
     loadMembers();
@@ -3015,13 +3475,13 @@ function renderLastBackup() {
 async function offerReport() {
   const answer = await ask({
     title: 'Del kamprapport?',
-    message: 'Lag en PDF av statistikken. I utskriftsvinduet velger du «Lagre som PDF» og deler filen. ' +
+    message: 'Lag en PDF av statistikken som du kan sende til trenere og spillere. ' +
              'Sikkerhetskopi er en datafil som bare kan åpnes i Skuddkart.',
     okText: 'Del rapport (PDF)',
     alt: 'Ta sikkerhetskopi',
     cancelText: 'Ikke nå'
   });
-  if (answer === true) printReport();
+  if (answer === true) sharePdf();
   else if (answer === 'alt') exportBackup();
 }
 

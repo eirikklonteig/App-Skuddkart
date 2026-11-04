@@ -106,6 +106,11 @@
         <button class="btn btn-primary" id="btn-add-player"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Ny spiller</button>
       </div>
 
+      <label class="field">
+        <span>Klubb</span>
+        <select id="input-team-club"></select>
+      </label>
+
       <div class="field-row">
         <label class="field">
           <span>Lagnavn</span>
@@ -336,10 +341,10 @@
         <details>
           <summary>1. Kom i gang: lag og spillere</summary>
           <ul>
-            <li>Gå til <b>Lag</b>. Lag et lag med <b>+ Nytt lag</b>, eller bruk laget som finnes.</li>
+            <li>Gå til <b>Lag</b>. Velg <b>klubb</b> øverst (eller <b>+ Ny klubb</b>), og lag et lag med <b>+ Nytt lag</b>, eller bruk laget som finnes.</li>
             <li>Velg <b>omgangslengde</b> for laget (maks 30 min).</li>
             <li>Legg inn spillere med <b>+ Ny spiller</b>: draktnummer, navn og om spilleren er <b>keeper</b>.</li>
-            <li>Har du flere lag, bytter du lag ved å trykke på <b>lagnavnet ▾</b> i det grønne toppfeltet.</li>
+            <li>Har du flere lag eller klubber, bytter du ved å trykke på <b>klubb · lag ▾</b> i det grønne toppfeltet.</li>
           </ul>
         </details>
 
@@ -390,7 +395,7 @@
           <ul>
             <li><b>⋯ → Avslutt kamp</b> stopper klokka og åpner statistikken.</li>
             <li>I <b>Statistikk</b> velger du kamp, <b>Våre skudd</b> eller <b>Keeper og forsvar</b>, og hele kampen eller én omgang.</li>
-            <li><b>Del / PDF</b> lager en rapport med både våre skudd og keeper. På iPhone: trykk <b>del-knappen</b> i utskriftsvinduet for å sende den, eller velg <b>Lagre i Filer</b>.</li>
+            <li><b>Del / PDF</b> lager en PDF-fil med både våre skudd og keeper. På mobil åpnes del-arket, så du kan sende den i Messenger, e-post eller lagre den i Filer. På PC lastes den ned.</li>
             <li>Statistikken kan også sees underveis, for eksempel i pausen: <b>⋯ → Statistikk for kampen</b>.</li>
           </ul>
         </details>
@@ -457,7 +462,7 @@
       <!-- Brukere (bare for administrator) -->
       <div class="card" id="members-card" hidden>
         <h3>Brukere</h3>
-        <p class="muted">Trenere logger inn med e-postadressen sin og ser bare laget sitt. Laget må være lagret på nett før en trener kan legges til.</p>
+        <p class="muted" id="members-intro"></p>
         <ul class="member-list" id="member-list"></ul>
         <p class="muted" id="members-status" hidden></p>
         <button class="btn btn-primary" id="btn-add-member">Legg til bruker</button>
@@ -469,7 +474,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 2.1 (test)</p>
+      <p class="muted small">Skuddkart versjon 2.2 (test)</p>
     </section>
   </main>
 
@@ -567,13 +572,18 @@
         <label class="field">
           <span>Lagnavn</span>
           <input type="text" id="input-new-team" maxlength="40" required autocomplete="off"
-                 placeholder="F.eks. Tune J14">
+                 placeholder="F.eks. J14">
         </label>
         <label class="field field-narrow">
           <span>Omgang (min)</span>
           <input type="number" id="input-new-team-half" min="5" max="30" inputmode="numeric" required>
         </label>
       </div>
+
+      <label class="field">
+        <span>Klubb</span>
+        <select id="input-new-team-club"></select>
+      </label>
 
       <label class="field">
         <span>Kopier spillere fra</span>
@@ -592,7 +602,7 @@
 
   <!-- Bytt lag (fra toppfeltet) -->
   <dialog id="team-switch-dialog">
-    <h3>Velg lag</h3>
+    <h3>Velg klubb og lag</h3>
     <div class="menu-list" id="team-switch-list"></div>
     <div class="btn-row end">
       <button type="button" class="btn btn-secondary" id="btn-manage-teams">Administrer lag</button>
@@ -660,10 +670,11 @@
       </label>
       <label class="field">
         <span>Rolle</span>
-        <select id="input-member-role">
-          <option value="coach">Trener (ser ett lag)</option>
-          <option value="admin">Administrator (ser alle lag og brukere)</option>
-        </select>
+        <select id="input-member-role"></select>
+      </label>
+      <label class="field" id="member-club-field">
+        <span>Klubb</span>
+        <select id="input-member-club"></select>
       </label>
       <label class="field" id="member-team-field">
         <span>Lag</span>

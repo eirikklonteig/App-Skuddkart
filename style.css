@@ -398,6 +398,9 @@ input:focus-visible, button:focus-visible, .btn:focus-within {
 
 #team-switch-list .btn { justify-content: space-between; }
 .switch-meta { font-weight: 400; font-size: .85rem; color: var(--muted); }
+/* Klubbnavn over lagene i lista og i «Velg klubb og lag» */
+.switch-club, .list-club { margin: 10px 0 0; font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.switch-club:first-child, .list-club:first-child { margin-top: 0; }
 #team-switch-list .btn.active { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
 
 /* =========================================================
@@ -1098,6 +1101,23 @@ select {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* PDF-fil: rapporten tegnes utenfor skjermen i A4-bredde (se sharePdf) */
+.print-report.pdf-render {
+  display: block;
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 704px;
+  background: #fff;
+  font-size: 14.5px;
+}
+.pdf-render .card, .pdf-render .kpi { box-shadow: none; border: 1px solid var(--border); border-radius: 12px; }
+.pdf-render .kpi-main { border: 0; }
+.pdf-render .card { margin-top: 12px; padding: 14px 16px; }
+.pdf-render .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pdf-render .stats-maps { grid-template-columns: 1fr 1fr; }
+.pdf-render .table-wrap { overflow: visible; }
 
 @media print {
   @page { size: A4; margin: 12mm; }

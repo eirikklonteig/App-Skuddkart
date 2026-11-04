@@ -59,5 +59,17 @@ står i tabellen `members` får se noe i appen.
 ## Legge til en trener
 1. Logg inn i appen som administrator.
 2. Lagre laget på nett (Lag → «Lagre laget på nett»).
-3. Gå til **Mer → Brukere → Legg til bruker**, velg rolle **Trener** og laget.
+3. Gå til **Mer → Brukere → Legg til bruker**, velg rolle **Trener**, klubb og lag.
 4. Treneren åpner skuddkart.vercel.app, går til Mer → Lagring på nett og logger inn med e-postadressen sin.
+
+## Klubber og klubbleder (versjon 2.2)
+1. Gå til **SQL Editor → New query**.
+2. Åpne filen `supabase/klubber.sql`, kopier **alt** og lim det inn.
+3. Trykk **Run**. Det skal stå *Success. No rows returned*.
+4. Åpne appen og trykk **Synkroniser nå** som administrator. Klubben
+   (for eksempel Tune IL) lastes da opp sammen med lagene dine.
+
+Roller:
+- **Administrator** ser alle klubber og lag, og legger til brukere i alle klubber.
+- **Klubbleder** ser alle lag i sin klubb og legger til trenere der.
+- **Trener** ser bare sitt eget lag.

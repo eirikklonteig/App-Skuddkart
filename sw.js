@@ -7,7 +7,7 @@
    lagring, og berøres ikke av denne filen.
    ========================================================= */
 
-const CACHE = 'skuddkart-v1';
+const CACHE = 'skuddkart-v2';
 
 // Filene appen trenger for å starte uten nett
 const APP_FILES = [
@@ -19,7 +19,10 @@ const APP_FILES = [
   'manifest.webmanifest',
   'icons/apple-touch-icon.png',
   'icons/icon-192.png',
-  'icons/icon-512.png'
+  'icons/icon-512.png',
+  // For å lage PDF-rapporten uten nett
+  'vendor/html2canvas-pro.min.js',
+  'vendor/jspdf.umd.min.js'
 ];
 
 self.addEventListener('install', (event) => {
