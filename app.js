@@ -2394,79 +2394,168 @@ function share(part, whole) {
   return whole ? part / whole : 0;
 }
 
+// Rad og side i målet (sett fra skytteren)
+const ROW_WORDS = ['høyt', 'midt i høyden', 'lavt'];
+const COL_WORDS = ['venstre side', 'midten', 'høyre side'];
+const hasZone = (s) => s.zone !== null && s.zone !== undefined;
+const zoneRow = (s) => ROW_WORDS[Math.floor(s.zone / 3)];
+const zoneCol = (s) => COL_WORDS[s.zone % 3];
+
+// «høyt i venstre side» o.l. når skuddene samler seg; ellers null
+function goalPattern(list) {
+  const withZone = list.filter(hasZone);
+  if (withZone.length < 2) return null;
+  const row = topGroup(withZone, zoneRow);
+  const col = topGroup(withZone, zoneCol);
+  const rowStrong = row && share(row.list.length, withZone.length) >= 0.5;
+  const colStrong = col && col.key !== 'midten' && share(col.list.length, withZone.length) >= 0.5;
+  if (rowStrong && colStrong) return `${row.key} i ${col.key}`;
+  if (rowStrong) return row.key;
+  if (colStrong) return `i ${col.key}`;
+  return null;
+}
+
+// Redningsprosent i hver del av målet (høyt/midt/lavt, venstre/høyre side).
+// Gir den svakeste og sterkeste delen med minst ANALYSIS_MIN skudd på mål.
+function keeperZones(onTarget) {
+  const parts = [
+    ...ROW_WORDS.map((word, row) => ({ word, test: (s) => Math.floor(s.zone / 3) === row })),
+    { word: 'i venstre side', test: (s) => s.zone % 3 === 0 },
+    { word: 'i høyre side', test: (s) => s.zone % 3 === 2 }
+  ].map((part) => {
+    const list = onTarget.filter((s) => hasZone(s) && part.test(s));
+    const saves = list.filter((s) => s.result === 'save').length;
+    return { word: part.word, n: list.length, saves, goals: list.length - saves, rate: share(saves, list.length) };
+  }).filter((p) => p.n >= ANALYSIS_MIN);
+  const weak = [...parts].sort((a, b) => a.rate - b.rate || b.n - a.n)[0];
+  const strong = [...parts].sort((a, b) => b.rate - a.rate || b.n - a.n)[0];
+  return {
+    weak: weak && weak.rate <= 0.3 ? weak : null,
+    strong: strong && strong !== weak && strong.rate >= 0.6 ? strong : null
+  };
+}
+
+function shotsByGroup(list) {
+  return [...groupBy(list.filter((s) => areaGroup(s)), areaGroup).entries()]
+    .map(([key, items]) => ({ key, items, t: tally(items) }));
+}
+
 // half: 1 eller 2, eller null for hele kampen
 function analyzeMatch(match, half) {
   const inHalf = (x) => !half || x.half === half;
   const shots = match.shots.filter(inHalf);
+  const events = (match.events || []).filter(inHalf);
   const ours = shots.filter((s) => s.side === 'us');
   const theirs = shots.filter((s) => s.side === 'them');
+  const theirGoals = theirs.filter((s) => s.result === 'goal');
   const opp = match.opponent;
   const sections = [];
+  const playerName = (p) => `#${p.number} ${firstName(p.name)}`;
 
-  // --- Motstanderen ---
+  // --- Motstanderen: hvordan angriper de, og hvem må vi stoppe ---
   const oppItems = [];
-  const theirGoals = theirs.filter((s) => s.result === 'goal');
+  const them = tally(theirs);
+  if (them.shots >= ANALYSIS_MIN) {
+    oppItems.push({ tone: 'neutral', text: `${them.goals} mål på ${them.shots} skudd (${pct(them.goals, them.shots)}).` });
+    const from = topGroup(theirs, areaGroup);
+    if (from && from.list.length >= ANALYSIS_MIN && share(from.list.length, them.shots) >= 0.4) {
+      oppItems.push({ tone: 'warn', text: `Skyter mest ${GROUP_FROM[from.key]}: ${from.list.length} av ${them.shots} skudd.` });
+    }
+  }
   const shooters = [...groupBy(theirs.filter((s) => s.oppNumber), (s) => s.oppNumber).entries()]
     .map(([n, list]) => ({ n, list, t: tally(list) }))
-    .sort((a, b) => b.t.goals - a.t.goals || b.t.shots - a.t.shots);
-  const star = shooters[0];
-  if (star && star.t.goals >= 2 && star.t.shots >= ANALYSIS_MIN) {
-    let text = `#${star.n} har ${star.t.goals} mål på ${star.t.shots} skudd`;
+    .filter((x) => x.t.goals >= 2 && x.t.shots >= ANALYSIS_MIN)
+    .sort((a, b) => b.t.goals - a.t.goals || b.t.shots - a.t.shots)
+    .slice(0, 2);
+  shooters.forEach((star) => {
+    let text = `#${star.n}: ${star.t.goals} mål på ${star.t.shots} skudd`;
     const fav = topGroup(star.list, areaGroup);
     if (fav && fav.list.length >= 2 && share(fav.list.length, star.list.length) >= 0.6) text += `, mest ${GROUP_FROM[fav.key]}`;
+    const where = goalPattern(star.list.filter((s) => s.result === 'goal'));
+    if (where) text += `. Målene går ${where}`;
     oppItems.push({ tone: 'bad', text: text + '.' });
-  }
+  });
   if (theirGoals.length >= ANALYSIS_MIN) {
     const g = topGroup(theirGoals, areaGroup);
     if (g && g.list.length >= 2 && share(g.list.length, theirGoals.length) >= 0.5) {
       oppItems.push({ tone: 'bad', text: `${g.list.length} av ${theirGoals.length} mål imot kom ${GROUP_FROM[g.key]}.` });
     }
   }
+  const theirTech = events.filter((e) => e.side === 'them' && e.type === 'tech').length;
+  if (theirTech >= 2) oppItems.push({ tone: 'good', text: `De har ${theirTech} tekniske feil. Press dem, så kommer det flere.` });
+
+  // Keeperen deres: hvor går det inn, og hvor redder keeperen
+  const theirKeeper = keeperZones(ours.filter((s) => s.result !== 'miss'));
+  if (theirKeeper.weak) {
+    oppItems.push({ tone: 'good', text: `Keeperen deres er svak ${theirKeeper.weak.word}: ${theirKeeper.weak.goals} av ${theirKeeper.weak.n} skudd gikk inn.` });
+  }
+  if (theirKeeper.strong) {
+    oppItems.push({ tone: 'warn', text: `Keeperen deres er sterk ${theirKeeper.strong.word}: ${theirKeeper.strong.saves} av ${theirKeeper.strong.n} reddet.` });
+  }
   if (oppItems.length) sections.push({ title: opp, dot: 'them', items: oppItems });
 
-  // --- Keeper bør følge med på ---
+  // --- Vår keeper: redninger, og hva keeperen må passe på ---
   const keeperItems = [];
-  const goalsWithZone = theirGoals.filter((s) => s.zone !== null && s.zone !== undefined);
-  if (goalsWithZone.length >= ANALYSIS_MIN) {
-    const row = topGroup(goalsWithZone, (s) => ['høyt', 'midt i høyden', 'lavt'][Math.floor(s.zone / 3)]);
-    if (row && share(row.list.length, goalsWithZone.length) >= 0.6) {
-      keeperItems.push({ tone: 'warn', text: `${row.list.length} av ${goalsWithZone.length} mål imot gikk ${row.key}.` });
-    }
-    const col = topGroup(goalsWithZone, (s) => ['venstre side', 'midten', 'høyre side'][s.zone % 3]);
-    if (col && col.key !== 'midten' && share(col.list.length, goalsWithZone.length) >= 0.6) {
-      keeperItems.push({ tone: 'warn', text: `${col.list.length} av ${goalsWithZone.length} mål imot gikk i ${col.key} av målet (sett fra skytteren).` });
-    }
+  const onTarget = theirs.filter((s) => s.result !== 'miss');
+  const saves = onTarget.filter((s) => s.result === 'save');
+  if (onTarget.length >= ANALYSIS_MIN) {
+    const rate = share(saves.length, onTarget.length);
+    keeperItems.push({
+      tone: rate >= 0.4 ? 'good' : rate < 0.25 ? 'warn' : 'neutral',
+      text: `${saves.length} av ${onTarget.length} skudd på mål reddet (${pct(saves.length, onTarget.length)}).`
+    });
   }
-  const saveGroups = [...groupBy(theirs.filter((s) => areaGroup(s)), areaGroup).entries()]
-    .map(([key, list]) => ({ key, t: tally(list) }))
-    .filter((g) => g.t.onTarget >= ANALYSIS_MIN);
+  // Hvor i målet (sett fra skytteren) det går inn, og hvor keeperen redder
+  const ourKeeper = keeperZones(onTarget);
+  if (ourKeeper.weak) {
+    keeperItems.push({ tone: 'warn', text: `Svakest ${ourKeeper.weak.word} (sett fra skytteren): ${ourKeeper.weak.goals} av ${ourKeeper.weak.n} skudd gikk inn.` });
+  }
+  if (ourKeeper.strong) {
+    keeperItems.push({ tone: 'good', text: `Sterk ${ourKeeper.strong.word}: ${ourKeeper.strong.saves} av ${ourKeeper.strong.n} reddet.` });
+  }
+  const saveGroups = shotsByGroup(theirs).filter((g) => g.t.onTarget >= ANALYSIS_MIN);
   const weakest = [...saveGroups].sort((a, b) => share(a.t.saves, a.t.onTarget) - share(b.t.saves, b.t.onTarget))[0];
   if (weakest && share(weakest.t.saves, weakest.t.onTarget) <= 0.3) {
     keeperItems.push({ tone: 'warn', text: `Få redninger ${GROUP_FROM[weakest.key]}: ${weakest.t.saves} av ${weakest.t.onTarget} skudd på mål.` });
   }
   const strongest = [...saveGroups].sort((a, b) => share(b.t.saves, b.t.onTarget) - share(a.t.saves, a.t.onTarget))[0];
-  if (strongest && strongest !== weakest && share(strongest.t.saves, strongest.t.onTarget) >= 0.6) {
+  if (strongest && strongest !== weakest && share(strongest.t.saves, strongest.t.onTarget) >= 0.5) {
     keeperItems.push({ tone: 'good', text: `Sterk ${GROUP_FROM[strongest.key]}: ${strongest.t.saves} av ${strongest.t.onTarget} reddet.` });
   }
-  if (keeperItems.length) sections.push({ title: 'Keeper bør følge med på', dot: 'keeper', items: keeperItems });
+  const wingGoals = theirGoals.filter((s) => areaGroup(s) === 'kant');
+  const wingPattern = goalPattern(wingGoals);
+  if (wingGoals.length >= 2 && wingPattern) {
+    keeperItems.push({ tone: 'warn', text: `Målene imot fra kant går ${wingPattern} (sett fra skytteren).` });
+  }
+  const penalties = theirs.filter(isPenalty);
+  if (penalties.length && tally(penalties).onTarget) {
+    const t = tally(penalties);
+    keeperItems.push({ tone: t.saves ? 'good' : 'neutral', text: `7 m: ${t.saves} av ${t.onTarget} reddet.` });
+  }
+  if (keeperItems.length) sections.push({ title: 'Keeper', dot: 'keeper', items: keeperItems });
 
-  // --- Oss ---
+  // --- Våre spillere ---
   const usItems = [];
   const us = tally(ours);
   if (us.shots) {
     usItems.push({ tone: 'neutral', text: `${us.goals} mål på ${us.shots} skudd (${pct(us.goals, us.shots)}).` });
   }
-  const scorers = [...groupBy(ours, (s) => s.playerId).entries()]
+  const byPlayer = [...groupBy(ours, (s) => s.playerId).entries()]
     .map(([id, list]) => ({ p: getPlayer(id), t: tally(list) }))
-    .filter((x) => x.p)
-    .sort((a, b) => b.t.goals - a.t.goals || a.t.shots - b.t.shots);
-  if (scorers[0] && scorers[0].t.goals >= 2) {
-    const s = scorers[0];
-    usItems.push({ tone: 'good', text: `#${s.p.number} ${firstName(s.p.name)} har ${s.t.goals} mål på ${s.t.shots} skudd.` });
-  }
-  const ourGroups = [...groupBy(ours.filter((s) => areaGroup(s)), areaGroup).entries()]
-    .map(([key, list]) => ({ key, t: tally(list) }))
-    .filter((g) => g.t.shots >= ANALYSIS_MIN);
+    .filter((x) => x.p);
+  byPlayer.filter((x) => x.t.goals >= 2)
+    .sort((a, b) => b.t.goals - a.t.goals || a.t.shots - b.t.shots)
+    .slice(0, 2)
+    .forEach((x) => usItems.push({ tone: 'good', text: `${playerName(x.p)}: ${x.t.goals} mål på ${x.t.shots} skudd.` }));
+  byPlayer.filter((x) => x.t.shots >= ANALYSIS_MIN && share(x.t.goals, x.t.shots) <= 0.25)
+    .sort((a, b) => b.t.shots - a.t.shots)
+    .slice(0, 2)
+    .forEach((x) => usItems.push({
+      tone: 'warn',
+      text: `${playerName(x.p)}: ${x.t.goals} mål på ${x.t.shots} skudd` +
+        (x.t.saves >= 2 ? ` – ${x.t.saves} reddet av keeper.` : x.t.misses >= 2 ? ` – ${x.t.misses} utenfor.` : '.')
+    }));
+  const ourGroups = shotsByGroup(ours).filter((g) => g.t.shots >= ANALYSIS_MIN);
   const best = [...ourGroups].sort((a, b) => share(b.t.goals, b.t.shots) - share(a.t.goals, a.t.shots))[0];
   const worst = [...ourGroups].sort((a, b) => share(a.t.goals, a.t.shots) - share(b.t.goals, b.t.shots))[0];
   if (best && share(best.t.goals, best.t.shots) >= 0.6) {
@@ -2475,20 +2564,24 @@ function analyzeMatch(match, half) {
   if (worst && worst !== best && share(worst.t.goals, worst.t.shots) <= 0.2) {
     usItems.push({ tone: 'warn', text: `Skuddene ${GROUP_FROM[worst.key]} går dårlig: ${worst.t.goals} av ${worst.t.shots}.` });
   }
-  const theirSaves = ours.filter((s) => s.result === 'save' && s.zone !== null && s.zone !== undefined);
-  if (theirSaves.length >= ANALYSIS_MIN) {
-    const row = topGroup(theirSaves, (s) => ['høyt', 'midt i høyden', 'lavt'][Math.floor(s.zone / 3)]);
-    if (row && share(row.list.length, theirSaves.length) >= 0.6) {
-      usItems.push({ tone: 'warn', text: `Keeperen deres redder mest ${row.key}: ${row.list.length} av ${theirSaves.length} redninger.` });
-    }
-  }
   if (us.misses >= 4 && share(us.misses, us.shots) >= 0.3) {
     usItems.push({ tone: 'warn', text: `Mange skudd utenfor: ${us.misses} av ${us.shots}.` });
   }
-  if (usItems.length) sections.push({ title: teamName(), dot: 'us', items: usItems });
+  const ourTech = events.filter((e) => e.side === 'us' && e.type === 'tech');
+  if (ourTech.length >= 2) {
+    const worstTech = [...groupBy(ourTech.filter((e) => e.playerId), (e) => e.playerId).entries()]
+      .map(([id, list]) => ({ p: getPlayer(id), n: list.length }))
+      .filter((x) => x.p && x.n >= 2)
+      .sort((a, b) => b.n - a.n)
+      .map((x) => `${playerName(x.p)} ${x.n}`);
+    usItems.push({
+      tone: ourTech.length >= 4 ? 'bad' : 'warn',
+      text: `${ourTech.length} tekniske feil` + (worstTech.length ? ` (${worstTech.join(', ')})` : '') + '. Ta vare på ballen.'
+    });
+  }
+  if (usItems.length) sections.push({ title: 'Våre spillere', dot: 'us', items: usItems });
 
   // --- Utvisninger ---
-  const events = (match.events || []).filter(inHalf);
   const suspended = (side) => events.filter((e) => e.side === side && (e.type === '2min' || e.type === 'red')).length;
   const ourSusp = suspended('us');
   const theirSusp = suspended('them');
