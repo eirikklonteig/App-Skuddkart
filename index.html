@@ -219,13 +219,18 @@
               <div class="event-row" id="event-row">
                 <button class="btn btn-event" data-event="yellow"><span class="card-icon yellow"></span>Gult</button>
                 <button class="btn btn-event" data-event="2min">2 min</button>
-                <button class="btn btn-event" data-event="red"><span class="card-icon red"></span>Rødt</button>
+                <button class="btn btn-event" data-event="tech">Tekn. feil</button>
                 <button class="btn btn-event" data-event="timeout">Time-out</button>
               </div>
 
               <div class="last-shot">
                 <span class="last-text" id="last-shot"></span>
                 <button class="btn btn-secondary btn-small" id="btn-undo"><svg class="icon" aria-hidden="true"><use href="#i-undo"/></svg>Angre</button>
+              </div>
+
+              <!-- Sjeldne hendelser ligger lenger ned -->
+              <div class="event-row-more">
+                <button class="btn btn-event" data-event="red"><span class="card-icon red"></span>Rødt kort</button>
               </div>
             </div>
           </div>
@@ -321,10 +326,10 @@
         </div>
 
         <div class="card">
-          <h3>Kort, utvisninger og time-out</h3>
+          <h3>Kort, utvisninger, tekniske feil og time-out</h3>
           <p class="stats-below" id="stats-timeouts"></p>
           <div class="table-wrap"><table class="stats-table" id="stats-cards"></table></div>
-          <p class="muted small-left" id="stats-cards-empty">Ingen kort eller utvisninger registrert.</p>
+          <p class="muted small-left" id="stats-cards-empty">Ingen kort, utvisninger eller tekniske feil registrert.</p>
         </div>
       </div>
     </section>
@@ -382,9 +387,10 @@
         </details>
 
         <details>
-          <summary>5. Kort, utvisninger og time-out</summary>
+          <summary>5. Kort, utvisninger, tekniske feil og time-out</summary>
           <ul>
-            <li>Trykk <b>spilleren</b> først, og så <b>Gult</b>, <b>2 min</b> eller <b>Rødt</b>.</li>
+            <li>Trykk <b>spilleren</b> først, og så <b>Gult</b> eller <b>2 min</b>. <b>Rødt kort</b> ligger under «Angre».</li>
+            <li><b>Teknisk feil</b> (brøyt, tramp, skritt, feil pasning …): trykk spilleren, gjerne der på banen det skjedde, og så <b>Tekn. feil</b>.</li>
             <li>Utvisninger vises øverst med nedtelling, så du ser når laget er i over- eller undertall.</li>
             <li><b>Time-out</b> trenger ingen spiller. Velg riktig lag (Vårt/Deres) først.</li>
           </ul>
@@ -474,7 +480,7 @@
         <button class="btn btn-danger" id="btn-reset">Slett alle data</button>
       </div>
 
-      <p class="muted small">Skuddkart versjon 2.2 (test)</p>
+      <p class="muted small">Skuddkart versjon 2.3 (test)</p>
     </section>
   </main>
 

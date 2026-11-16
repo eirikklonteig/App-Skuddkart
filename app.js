@@ -1788,7 +1788,8 @@ function renderTimeline(match) {
       }
     } else {
       const type = EVENT_TYPES[obj.type];
-      main.append(el('div', 'tl-who', eventWho(match, obj, false)), el('div', 'tl-detail', type.label));
+      const where = obj.area && getArea(obj.area) ? ' · ' + getArea(obj.area).short : '';
+      main.append(el('div', 'tl-who', eventWho(match, obj, false)), el('div', 'tl-detail', type.label + where));
       badge = el('span', 'badge ' + type.badge, type.short);
     }
 
@@ -1854,10 +1855,12 @@ const EVENT_TYPES = {
   yellow:  { label: 'Gult kort',  short: 'Gult',     badge: 'badge-yellow' },
   '2min':  { label: '2 minutter', short: '2 min',    badge: 'badge-2min', suspends: true },
   red:     { label: 'Rødt kort',  short: 'Rødt',     badge: 'badge-red', suspends: true },
+  tech:    { label: 'Teknisk feil', short: 'TF',      badge: 'badge-tech' },
   timeout: { label: 'Time-out',   short: 'Time-out', badge: 'badge-timeout' },
   halfend: { label: 'Slutt omgang', short: 'Slutt',  badge: 'badge' }
 };
 const CARD_TYPES = ['yellow', '2min', 'red'];
+const PLAYER_EVENTS = [...CARD_TYPES, 'tech'];   // hendelser som hører til én spiller
 const SUSPENSION_SEC = 120;   // en utvisning varer 2 minutter kamptid
 
 function registerEvent(type) {
@@ -1878,6 +1881,10 @@ function registerEvent(type) {
     half: match.clock.half,
     sec: Math.floor(clockMs(match) / 1000)
   };
+  if (type === 'tech' && draft.area) {
+    ev.area = draft.area;
+    ev.pos = draft.pos;
+  }
   if (!match.events) match.events = [];
   match.events.push(ev);
   match.registrar = { device: deviceId, at: Date.now() };
@@ -2334,7 +2341,7 @@ function renderStatsCards(matches) {
   );
 
   // Kort og utvisninger for laget som vises (våre spillere, eller motstanderens)
-  const cards = events.filter((ev) => CARD_TYPES.includes(ev.type) && ev.side === statsSide);
+  const cards = events.filter((ev) => PLAYER_EVENTS.includes(ev.type) && ev.side === statsSide);
   const keyOf = (ev) => (isUs
     ? ev.playerId
     : (allMatches ? ev.match.opponent + ' ' : '') + (ev.oppNumber ? '#' + ev.oppNumber : 'Ukjent'));
@@ -2346,12 +2353,12 @@ function renderStatsCards(matches) {
   const count = (list, type) => list.filter((ev) => ev.type === type).length;
 
   const rows = [...groupBy(cards, keyOf).entries()]
-    .map(([key, list]) => [nameOf(key), count(list, 'yellow'), count(list, '2min'), count(list, 'red')])
-    .sort((a, b) => b[2] - a[2] || b[1] - a[1]);
+    .map(([key, list]) => [nameOf(key), count(list, 'yellow'), count(list, '2min'), count(list, 'red'), count(list, 'tech')])
+    .sort((a, b) => b[2] - a[2] || b[1] - a[1] || b[4] - a[4]);
   $('stats-cards-empty').hidden = rows.length > 0;
   $('stats-cards').hidden = rows.length === 0;
-  fillTable($('stats-cards'), [isUs ? 'Spiller' : 'Skytter', 'Gult', '2 min', 'Rødt'], rows,
-    rows.length ? ['Totalt', count(cards, 'yellow'), count(cards, '2min'), count(cards, 'red')] : null);
+  fillTable($('stats-cards'), [isUs ? 'Spiller' : 'Skytter', 'Gult', '2 min', 'Rødt', 'Tekn. feil'], rows,
+    rows.length ? ['Totalt', count(cards, 'yellow'), count(cards, '2min'), count(cards, 'red'), count(cards, 'tech')] : null);
 }
 
 // ---------- Pauseanalyse ----------

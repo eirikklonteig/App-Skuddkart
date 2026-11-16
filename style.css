@@ -892,6 +892,9 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
 .card-icon { display: inline-block; flex: none; width: 9px; height: 12px; border-radius: 2px; }
 .card-icon.yellow { background: #f2c200; }
 .card-icon.red { background: var(--red); }
+/* Rødt kort er sjeldent og ligger under «Angre» */
+.event-row-more { display: flex; justify-content: flex-end; margin-top: 6px; }
+.event-row-more .btn-event { min-height: 32px; padding: 0 12px; }
 
 /* Aktive utvisninger under resultatlinja */
 .susp-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
@@ -942,6 +945,7 @@ dialog h3 { font-size: 1.2rem; margin-bottom: 18px; }
 .badge-yellow { background: #fdf0c2; color: #6b5200; }
 .badge-2min { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--text); }
 .badge-red { background: var(--red-soft); color: var(--red); }
+.badge-tech { background: #ece7f5; color: #4b3a6b; }
 .badge-timeout { background: #e3ecf7; color: #24456b; }
 
 /* ---------- Avsluttet kamp ---------- */
